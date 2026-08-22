@@ -6,7 +6,7 @@ import { KeyRound, LogOut, ChevronDown } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { Button } from "@/components/ui/Button";
-import { Input, Label, FieldError } from "@/components/ui/Input";
+import { PasswordInput, Label, FieldError } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { cerrarSesionAction, cambiarPasswordAction } from "@/app/actions/auth";
 
@@ -116,9 +116,8 @@ function ModalCambiarPassword({ open, onClose }: { open: boolean; onClose: () =>
       <form id="form-password" onSubmit={onSubmit} className="flex flex-col gap-4">
         <div>
           <Label htmlFor="password-nueva">Nueva contraseña</Label>
-          <Input
+          <PasswordInput
             id="password-nueva"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
@@ -126,9 +125,8 @@ function ModalCambiarPassword({ open, onClose }: { open: boolean; onClose: () =>
         </div>
         <div>
           <Label htmlFor="password-confirmacion">Confirmar contraseña</Label>
-          <Input
+          <PasswordInput
             id="password-confirmacion"
-            type="password"
             value={confirmacion}
             onChange={(e) => setConfirmacion(e.target.value)}
             autoComplete="new-password"

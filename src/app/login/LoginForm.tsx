@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
 import { iniciarSesionAction, type AccionResultado } from "@/app/actions/auth";
-import { Input, Label, FieldError } from "@/components/ui/Input";
+import { Input, PasswordInput, Label, FieldError } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
 const ESTADO_INICIAL: AccionResultado = { ok: true };
@@ -25,7 +25,7 @@ export function LoginForm() {
 
       <div>
         <Label htmlFor="password">Contraseña</Label>
-        <Input id="password" name="password" type="password" placeholder="••••••••" icon={<Lock className="size-4" />} required />
+        <PasswordInput id="password" name="password" placeholder="••••••••" icon={<Lock className="size-4" />} required />
       </div>
 
       {!estado.ok && <FieldError>{estado.error}</FieldError>}

@@ -267,6 +267,18 @@ function ModalUsuario({
     setMatriz((prev) => prev.map((p) => (p.modulo === modulo ? { ...p, [accion]: !p[accion] } : p)));
   }
 
+  /** Marca o desmarca de una sola vez las cuatro acciones de un módulo. */
+  function alternarFilaCompleta(modulo: string) {
+    setMatriz((prev) =>
+      prev.map((p) => {
+        if (p.modulo !== modulo) return p;
+        const todosActivos = p.crear && p.leer && p.actualizar && p.eliminar;
+        const nuevoValor = !todosActivos;
+        return { ...p, crear: nuevoValor, leer: nuevoValor, actualizar: nuevoValor, eliminar: nuevoValor };
+      }),
+    );
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -384,6 +396,7 @@ function ModalUsuario({
             <table className="w-full min-w-[420px] text-left text-[13px]">
               <thead className="bg-muted/60">
                 <tr>
+                  <th className="px-2 py-2 text-center font-medium text-muted-foreground">Todos</th>
                   <th className="px-3 py-2 font-medium text-muted-foreground">Módulo</th>
                   <th className="px-2 py-2 text-center font-medium text-muted-foreground">Crear</th>
                   <th className="px-2 py-2 text-center font-medium text-muted-foreground">Leer</th>
@@ -394,8 +407,18 @@ function ModalUsuario({
               <tbody className="divide-y divide-border">
                 {modulos.map((m) => {
                   const fila = matriz.find((p) => p.modulo === m.code);
+                  const todosActivos = !!fila && fila.crear && fila.leer && fila.actualizar && fila.eliminar;
                   return (
                     <tr key={m.code}>
+                      <td className="px-2 py-1.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={todosActivos}
+                          onChange={() => alternarFilaCompleta(m.code)}
+                          title="Seleccionar toda la fila"
+                          className="size-4 rounded border-input"
+                        />
+                      </td>
                       <td className="px-3 py-1.5 text-foreground">{m.label}</td>
                       {(["crear", "leer", "actualizar", "eliminar"] as const).map((accion) => (
                         <td key={accion} className="px-2 py-1.5 text-center">
