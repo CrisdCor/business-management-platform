@@ -79,18 +79,20 @@ export class UsuarioRepository {
     if (error) throw new Error(`[usuarios] actualizarPerfil: ${error.message}`);
   }
 
+  /**
+   * Reemplaza los roles de un usuario en una sola transacción atómica del lado
+   * de la base de datos (función `reemplazar_roles_usuario`), que además
+   * rechaza la operación completa si el resultado deja al sistema sin ningún
+   * Superadministrador activo. Antes esto era un DELETE + INSERT en dos
+   * llamadas separadas sin ninguna validación, lo que permitió que un usuario
+   * se quedara sin su propio rol de Superadministrador y bloqueara la app.
+   */
   async reemplazarRoles(usuarioId: string, roles: RoleCode[]): Promise<void> {
-    const { error: delError } = await this.client
-      .from("usuario_roles")
-      .delete()
-      .eq("usuario_id", usuarioId);
-    if (delError) throw new Error(`[usuario_roles] delete: ${delError.message}`);
-
-    if (roles.length === 0) return;
-    const { error: insError } = await this.client
-      .from("usuario_roles")
-      .insert(roles.map((rol_code) => ({ usuario_id: usuarioId, rol_code })));
-    if (insError) throw new Error(`[usuario_roles] insert: ${insError.message}`);
+    const { error } = await this.client.rpc("reemplazar_roles_usuario", {
+      p_usuario_id: usuarioId,
+      p_roles: roles,
+    });
+    if (error) throw new Error(`[usuario_roles] reemplazar: ${error.message}`);
   }
 
   async reemplazarPermisos(usuarioId: string, permisos: PermisoRow[]): Promise<void> {

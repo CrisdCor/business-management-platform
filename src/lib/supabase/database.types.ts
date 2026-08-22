@@ -502,6 +502,10 @@ export type Database = {
         Args: { p_accion: string; p_modulo: string }
         Returns: boolean
       }
+      reemplazar_roles_usuario: {
+        Args: { p_roles: string[]; p_usuario_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
