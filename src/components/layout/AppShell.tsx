@@ -4,15 +4,18 @@ import * as React from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import type { UsuarioSesion } from "@/components/layout/UserMenu";
+import type { NotificacionVM } from "@/components/layout/NotificacionesBell";
 import type { ModuloCodigo } from "@/domain/enums";
 
 export function AppShell({
   usuario,
   modulosVisibles,
+  notificaciones,
   children,
 }: {
   usuario: UsuarioSesion;
   modulosVisibles: ModuloCodigo[];
+  notificaciones: NotificacionVM[];
   children: React.ReactNode;
 }) {
   const [menuMovilAbierto, setMenuMovilAbierto] = React.useState(false);
@@ -38,7 +41,7 @@ export function AppShell({
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar usuario={usuario} onAbrirMenu={() => setMenuMovilAbierto(true)} />
+        <Topbar usuario={usuario} notificaciones={notificaciones} onAbrirMenu={() => setMenuMovilAbierto(true)} />
         <main className="flex-1 overflow-y-auto bg-background px-4 py-5 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>

@@ -2,15 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { AuthService } from "@/services/AuthService";
 import { RequisicionService } from "@/services/RequisicionService";
 import type { AccionResultado } from "@/app/actions/auth";
 
 export async function crearRequisicionAction(input: {
-  areaId: string;
-  rubroId: string;
-  descripcion: string;
-  montoEstimado: number;
+  descripcion?: string | null;
+  items: { productoId: string; cantidad: number; observacion: string | null }[];
 }): Promise<AccionResultado> {
   const supabase = await createClient();
   try {
@@ -24,11 +21,8 @@ export async function crearRequisicionAction(input: {
 
 export async function aprobarRequisicionAction(id: string): Promise<AccionResultado> {
   const supabase = await createClient();
-  const usuario = await new AuthService(supabase).usuarioActual();
-  if (!usuario) return { ok: false, error: "Sesión expirada." };
-
   try {
-    await new RequisicionService(supabase).aprobar(id, usuario.id);
+    await new RequisicionService(supabase).aprobar(id);
     revalidatePath("/compras/requisiciones");
     return { ok: true };
   } catch (error) {
@@ -38,11 +32,8 @@ export async function aprobarRequisicionAction(id: string): Promise<AccionResult
 
 export async function rechazarRequisicionAction(id: string, motivo: string): Promise<AccionResultado> {
   const supabase = await createClient();
-  const usuario = await new AuthService(supabase).usuarioActual();
-  if (!usuario) return { ok: false, error: "Sesión expirada." };
-
   try {
-    await new RequisicionService(supabase).rechazar(id, usuario.id, motivo);
+    await new RequisicionService(supabase).rechazar(id, motivo);
     revalidatePath("/compras/requisiciones");
     return { ok: true };
   } catch (error) {

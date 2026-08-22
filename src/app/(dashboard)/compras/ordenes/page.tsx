@@ -38,7 +38,6 @@ export default async function OrdenesPage() {
   ]);
 
   const requisicionPorId = new Map(todasRequisiciones.map((r) => [r.id, r]));
-  const idsConCompra = new Set(compras.map((c) => c.requisicionId));
 
   const vm: CompraVM[] = compras.map((c) => {
     const requisicion = requisicionPorId.get(c.requisicionId);
@@ -49,25 +48,49 @@ export default async function OrdenesPage() {
       requisicionFolio: requisicion?.folio ?? "—",
       requisicionDescripcion: requisicion?.descripcion ?? "—",
       proveedorNombre: c.proveedorNombre ?? "—",
-      monto: c.monto,
+      montoTotal: c.montoTotal,
       excedePresupuesto: c.excedePresupuesto,
       estado: c.estado,
       fechaCompra: c.fechaCompra.toISOString(),
       fechaEntregaEstimada: c.fechaEntregaEstimada?.toISOString() ?? null,
       fechaCierre: c.fechaCierre?.toISOString() ?? null,
       diasParaEntrega: c.diasParaEntrega,
+      items: c.items.map((it) => ({
+        id: it.id,
+        requisicionItemId: it.requisicion_item_id,
+        productoNombre: it.producto_nombre ?? "—",
+        unidadMedidaNombre: it.unidad_medida_nombre ?? "—",
+        unidadMedidaAbreviatura: it.unidad_medida_abreviatura ?? null,
+        cantidad: it.cantidad ?? 0,
+        precioUnitario: it.precio_unitario,
+        observacion: it.observacion ?? null,
+      })),
     };
   });
 
   const requisicionesVM: RequisicionDisponibleVM[] = todasRequisiciones
-    .filter((r) => r.estado === ESTADO_REQUISICION.APROBADA && !idsConCompra.has(r.id))
+    .filter(
+      (r) =>
+        (r.estado === ESTADO_REQUISICION.APROBADA || r.estado === ESTADO_REQUISICION.EN_COMPRA) &&
+        r.items.some((it) => !it.comprado),
+    )
     .map((r) => ({
       id: r.id,
       folio: r.folio,
       descripcion: r.descripcion,
-      montoEstimado: r.montoEstimado,
       areaNombre: r.areaNombre ?? "—",
-      rubroNombre: r.rubroNombre ?? "—",
+      ciudadOperacionNombre: r.ciudadOperacionNombre ?? "—",
+      itemsPendientes: r.items
+        .filter((it) => !it.comprado)
+        .map((it) => ({
+          id: it.id,
+          productoNombre: it.producto_nombre ?? "—",
+          rubroNombre: it.rubro_nombre ?? "—",
+          unidadMedidaNombre: it.unidad_medida_nombre ?? "—",
+          unidadMedidaAbreviatura: it.unidad_medida_abreviatura ?? null,
+          cantidad: it.cantidad,
+          observacion: it.observacion,
+        })),
     }));
 
   const proveedoresVM: ProveedorOpcionVM[] = proveedores

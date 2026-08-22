@@ -1,16 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { RequisicionRepository, type RequisicionFiltros } from "@/repositories/RequisicionRepository";
-import { PresupuestoRepository } from "@/repositories/PresupuestoRepository";
 import { Requisicion } from "@/domain/entities/Requisicion";
-import { ESTADO_REQUISICION } from "@/domain/enums";
 
 export class RequisicionService {
   private readonly requisiciones: RequisicionRepository;
-  private readonly presupuestos: PresupuestoRepository;
 
   constructor(client: SupabaseClient) {
     this.requisiciones = new RequisicionRepository(client);
-    this.presupuestos = new PresupuestoRepository(client);
   }
 
   listar(filtros: RequisicionFiltros = {}) {
@@ -22,59 +18,31 @@ export class RequisicionService {
   }
 
   /**
-   * Crea una requisición para el periodo (mes/año) vigente. El estado inicial
-   * (pendiente vs. aprobada) lo decide un trigger en base de datos según el
-   * rol de quien la crea, para que la regla no pueda saltarse desde el cliente.
+   * Crea una requisición por ítems (producto + cantidad + observación). El
+   * área, la ciudad de operación, el solicitante y el estado inicial
+   * (pendiente vs. aprobada según el rol de quien la crea) los fija la
+   * función RPC `crear_requisicion` en base de datos, no el cliente.
    */
   async crear(input: {
-    areaId: string;
-    rubroId: string;
-    descripcion: string;
-    montoEstimado: number;
+    descripcion?: string | null;
+    items: { productoId: string; cantidad: number; observacion: string | null }[];
   }): Promise<Requisicion> {
-    const ahora = new Date();
-    const presupuesto = await this.presupuestos.buscarPorPeriodo(
-      input.rubroId,
-      input.areaId,
-      ahora.getFullYear(),
-      ahora.getMonth() + 1,
-    );
-
-    if (!presupuesto) {
-      throw new Error(
-        "No hay un presupuesto asignado para este rubro y área en el mes actual. Solicita a la Asistente Administrativa que lo asigne antes de crear la requisición.",
-      );
+    if (input.items.length === 0) {
+      throw new Error("La requisición debe tener al menos un ítem.");
     }
-
-    return this.requisiciones.insert({
-      area_id: input.areaId,
-      rubro_id: input.rubroId,
-      presupuesto_id: presupuesto.id,
-      descripcion: input.descripcion,
-      monto_estimado: input.montoEstimado,
+    return this.requisiciones.crearConItems({
+      descripcion: input.descripcion ?? null,
+      items: input.items,
     });
   }
 
-  async aprobar(id: string, aprobadorId: string): Promise<Requisicion> {
-    return this.requisiciones.update(id, {
-      estado: ESTADO_REQUISICION.APROBADA,
-      aprobador_id: aprobadorId,
-      fecha_aprobacion: new Date().toISOString(),
-      motivo_rechazo: null,
-    });
+  /** Aprueba la requisición. La RPC exige que quien aprueba sea Supervisor o Superadministrador. */
+  async aprobar(id: string): Promise<Requisicion> {
+    return this.requisiciones.aprobar(id);
   }
 
-  async rechazar(id: string, aprobadorId: string, motivo: string): Promise<Requisicion> {
-    return this.requisiciones.update(id, {
-      estado: ESTADO_REQUISICION.RECHAZADA,
-      aprobador_id: aprobadorId,
-      motivo_rechazo: motivo,
-    });
-  }
-
-  /** Nivel de alerta de consumo para una requisición, según el presupuesto asociado al momento de crearla. */
-  async alertaPresupuesto(requisicion: Requisicion) {
-    const presupuesto = await this.presupuestos.findById(requisicion.presupuestoId);
-    return presupuesto?.nivelAlerta ?? "normal";
+  /** Rechaza la requisición con motivo. La RPC exige que quien rechaza sea Superadministrador. */
+  async rechazar(id: string, motivo: string): Promise<Requisicion> {
+    return this.requisiciones.rechazar(id, motivo);
   }
 }

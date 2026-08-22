@@ -18,37 +18,34 @@ export class CompraService {
     return this.compras.findById(id);
   }
 
+  /** Una requisición puede tener varias compras (compra parcial por ítems). */
   obtenerPorRequisicion(requisicionId: string) {
-    return this.compras.buscarPorRequisicion(requisicionId);
+    return this.compras.listarPorRequisicion(requisicionId);
   }
 
   /**
-   * Registra la compra a partir de una requisición ya aprobada. Si el monto
-   * excede el disponible del presupuesto, el trigger de base de datos deja
-   * la compra en `pendiente_aprobacion_exceso` hasta que el Superadministrador
-   * la apruebe con `aprobarExceso`.
+   * Registra la compra (OC) a partir de ítems de una requisición ya
+   * aprobada. La RPC `registrar_compra_oc` valida pertenencia/disponibilidad
+   * de cada ítem y el presupuesto por rubro; si algún rubro excede el
+   * disponible, la compra queda en `pendiente_aprobacion_exceso` hasta que
+   * el Superadministrador la apruebe con `aprobarExceso`.
    */
   async registrar(input: {
     requisicionId: string;
     proveedorId: string;
-    monto: number;
+    items: { requisicionItemId: string; precioUnitario: number }[];
     fechaEntregaEstimada: string | null;
     notas: string | null;
   }): Promise<Compra> {
-    return this.compras.insert({
-      requisicion_id: input.requisicionId,
-      proveedor_id: input.proveedorId,
-      monto: input.monto,
-      fecha_entrega_estimada: input.fechaEntregaEstimada,
-      notas: input.notas,
-    });
+    if (input.items.length === 0) {
+      throw new Error("La compra debe incluir al menos un ítem.");
+    }
+    return this.compras.registrarConItems(input);
   }
 
-  async aprobarExceso(id: string, superadminId: string): Promise<Compra> {
-    return this.compras.update(id, {
-      aprobado_superadmin_id: superadminId,
-      estado: ESTADO_COMPRA.EN_PROCESO,
-    });
+  /** Aprueba el exceso de presupuesto. La RPC exige que quien aprueba sea Superadministrador. */
+  async aprobarExceso(id: string): Promise<Compra> {
+    return this.compras.aprobarExceso(id);
   }
 
   async marcarEnviada(id: string): Promise<Compra> {

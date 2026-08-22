@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, FileDown, ShieldCheck, Truck, CheckCheck } from "lucide-react";
+import { Plus, FileDown, ShieldCheck, Truck, CheckCheck, Eye } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +40,7 @@ export function OrdenesView({
 }) {
   const [busqueda, setBusqueda] = React.useState("");
   const [modalRegistrar, setModalRegistrar] = React.useState(false);
+  const [verItems, setVerItems] = React.useState<CompraVM | null>(null);
   const { notificar } = useToast();
 
   const filtradas = comprasIniciales.filter(
@@ -59,7 +60,7 @@ export function OrdenesView({
     <div>
       <PageHeader
         title="Compras / Órdenes de compra"
-        description="Gestión de compras a partir de requisiciones aprobadas."
+        description="Gestión de compras a partir de los ítems de requisiciones aprobadas."
         action={
           permisos.puedeRegistrar &&
           requisicionesDisponibles.length > 0 && (
@@ -77,7 +78,7 @@ export function OrdenesView({
           <TableBody>
             <tr>
               <td colSpan={7}>
-                <EmptyState title="No hay compras registradas" description="Registra una compra a partir de una requisición aprobada." />
+                <EmptyState title="No hay compras registradas" description="Registra una compra a partir de los ítems pendientes de una requisición aprobada." />
               </td>
             </tr>
           </TableBody>
@@ -89,7 +90,7 @@ export function OrdenesView({
               <TableHead>OC</TableHead>
               <TableHead>Requisición</TableHead>
               <TableHead>Proveedor</TableHead>
-              <TableHead>Monto</TableHead>
+              <TableHead>Monto total</TableHead>
               <TableHead>Entrega estimada</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -101,11 +102,16 @@ export function OrdenesView({
                 <TableCell className="font-mono text-xs">{c.folioOc}</TableCell>
                 <TableCell>
                   <div className="font-mono text-xs text-foreground">{c.requisicionFolio}</div>
-                  <div className="max-w-[200px] truncate text-xs text-muted-foreground">{c.requisicionDescripcion}</div>
+                  <button
+                    onClick={() => setVerItems(c)}
+                    className="inline-flex items-center gap-1 text-xs text-info hover:underline"
+                  >
+                    <Eye className="size-3" /> {c.items.length} ítem{c.items.length === 1 ? "" : "s"}
+                  </button>
                 </TableCell>
                 <TableCell>{c.proveedorNombre}</TableCell>
                 <TableCell>
-                  {formatCurrency(c.monto)}
+                  {formatCurrency(c.montoTotal)}
                   {c.excedePresupuesto && (
                     <Badge variant="warning" className="ml-1.5">
                       excede presupuesto
@@ -172,8 +178,46 @@ export function OrdenesView({
         requisiciones={requisicionesDisponibles}
         proveedores={proveedores}
       />
+      <ModalVerItemsCompra compra={verItems} onClose={() => setVerItems(null)} />
     </div>
   );
+}
+
+function ModalVerItemsCompra({ compra, onClose }: { compra: CompraVM | null; onClose: () => void }) {
+  return (
+    <SlideOver open={!!compra} onClose={onClose} title={`Ítems de ${compra?.folioOc ?? ""}`} width="md">
+      {compra && (
+        <Table>
+          <TableHeader>
+            <tr>
+              <TableHead>Producto</TableHead>
+              <TableHead>Cantidad</TableHead>
+              <TableHead>Precio unitario</TableHead>
+              <TableHead>Subtotal</TableHead>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            {compra.items.map((it) => (
+              <TableRow key={it.id}>
+                <TableCell>{it.productoNombre}</TableCell>
+                <TableCell>
+                  {it.cantidad} {it.unidadMedidaAbreviatura ?? it.unidadMedidaNombre}
+                </TableCell>
+                <TableCell>{formatCurrency(it.precioUnitario)}</TableCell>
+                <TableCell>{formatCurrency(it.cantidad * it.precioUnitario)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </SlideOver>
+  );
+}
+
+interface SeleccionItem {
+  itemId: string;
+  seleccionado: boolean;
+  precioUnitario: string;
 }
 
 function ModalRegistrarCompra({
@@ -189,7 +233,7 @@ function ModalRegistrarCompra({
 }) {
   const [requisicionId, setRequisicionId] = React.useState("");
   const [proveedorId, setProveedorId] = React.useState("");
-  const [monto, setMonto] = React.useState("");
+  const [seleccion, setSeleccion] = React.useState<SeleccionItem[]>([]);
   const [fechaEntrega, setFechaEntrega] = React.useState("");
   const [notas, setNotas] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -198,27 +242,57 @@ function ModalRegistrarCompra({
 
   const requisicionSeleccionada = requisiciones.find((r) => r.id === requisicionId);
 
+  React.useEffect(() => {
+    // Reinicia la selección de ítems al cambiar de requisición (el formulario
+    // permanece montado durante la animación de salida del SlideOver).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSeleccion(
+      (requisicionSeleccionada?.itemsPendientes ?? []).map((it) => ({
+        itemId: it.id,
+        seleccionado: false,
+        precioUnitario: "",
+      })),
+    );
+  }, [requisicionSeleccionada]);
+
   function limpiar() {
     setRequisicionId("");
     setProveedorId("");
-    setMonto("");
+    setSeleccion([]);
     setFechaEntrega("");
     setNotas("");
     setError(null);
   }
 
+  function actualizarSeleccion(itemId: string, cambios: Partial<SeleccionItem>) {
+    setSeleccion((prev) => prev.map((s) => (s.itemId === itemId ? { ...s, ...cambios } : s)));
+  }
+
+  const itemsSeleccionados = seleccion.filter((s) => s.seleccionado);
+  const totalEstimado = itemsSeleccionados.reduce((acc, s) => {
+    const item = requisicionSeleccionada?.itemsPendientes.find((it) => it.id === s.itemId);
+    const precio = Number(s.precioUnitario) || 0;
+    return acc + (item ? item.cantidad * precio : 0);
+  }, 0);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const montoNumero = Number(monto);
     if (!requisicionId || !proveedorId) return setError("Selecciona la requisición y el proveedor.");
-    if (!montoNumero || montoNumero <= 0) return setError("Ingresa el monto real de la compra.");
+    if (itemsSeleccionados.length === 0) return setError("Selecciona al menos un ítem a comprar.");
+    for (const s of itemsSeleccionados) {
+      const precio = Number(s.precioUnitario);
+      if (!precio || precio <= 0) return setError("Ingresa el precio unitario de cada ítem seleccionado.");
+    }
 
     setCargando(true);
     const resultado = await registrarCompraAction({
       requisicionId,
       proveedorId,
-      monto: montoNumero,
+      items: itemsSeleccionados.map((s) => ({
+        requisicionItemId: s.itemId,
+        precioUnitario: Number(s.precioUnitario),
+      })),
       fechaEntregaEstimada: fechaEntrega ? new Date(fechaEntrega).toISOString() : null,
       notas: notas.trim() || null,
     });
@@ -236,7 +310,8 @@ function ModalRegistrarCompra({
       open={open}
       onClose={onClose}
       title="Registrar compra"
-      description="Genera la orden de compra (OC) a partir de una requisición aprobada."
+      description="Selecciona los ítems que se negociaron y su precio; se genera la Orden de Compra (OC)."
+      width="lg"
       footer={
         <Button type="submit" form="form-compra" loading={cargando}>
           Registrar compra
@@ -246,18 +321,67 @@ function ModalRegistrarCompra({
       <form id="form-compra" onSubmit={onSubmit} className="flex flex-col gap-4">
         <div>
           <Label htmlFor="compra-requisicion">Requisición aprobada</Label>
-          <Select id="compra-requisicion" value={requisicionId} onChange={(e) => setRequisicionId(e.target.value)}>
+          <Select
+            id="compra-requisicion"
+            value={requisicionId}
+            onChange={(e) => {
+              setRequisicionId(e.target.value);
+              setProveedorId("");
+            }}
+          >
             <option value="">Selecciona una requisición</option>
             {requisiciones.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.folio} · {r.areaNombre} · {formatCurrency(r.montoEstimado)}
+                {r.folio} · {r.areaNombre} · {r.itemsPendientes.length} ítem(s) pendiente(s)
               </option>
             ))}
           </Select>
-          {requisicionSeleccionada && (
-            <FieldHint>{requisicionSeleccionada.descripcion}</FieldHint>
-          )}
+          {requisicionSeleccionada?.descripcion && <FieldHint>{requisicionSeleccionada.descripcion}</FieldHint>}
         </div>
+
+        {requisicionSeleccionada && (
+          <div className="flex flex-col gap-2">
+            <Label>Ítems pendientes</Label>
+            <div className="flex flex-col gap-2">
+              {requisicionSeleccionada.itemsPendientes.map((it) => {
+                const sel = seleccion.find((s) => s.itemId === it.id);
+                return (
+                  <div key={it.id} className="flex items-start gap-2 rounded-md border border-border p-2.5">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 rounded border-input"
+                      checked={sel?.seleccionado ?? false}
+                      onChange={(e) => actualizarSeleccion(it.id, { seleccionado: e.target.checked })}
+                    />
+                    <div className="flex-1">
+                      <p className="text-[13px] font-medium text-foreground">{it.productoNombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {it.cantidad} {it.unidadMedidaAbreviatura ?? it.unidadMedidaNombre} · {it.rubroNombre}
+                        {it.observacion ? ` · ${it.observacion}` : ""}
+                      </p>
+                    </div>
+                    <div className="w-32">
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="Precio unitario"
+                        disabled={!sel?.seleccionado}
+                        value={sel?.precioUnitario ?? ""}
+                        onChange={(e) => actualizarSeleccion(it.id, { precioUnitario: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {itemsSeleccionados.length > 0 && (
+              <p className="text-right text-sm font-medium text-foreground">
+                Total estimado: {formatCurrency(totalEstimado)}
+              </p>
+            )}
+          </div>
+        )}
 
         <div>
           <Label htmlFor="compra-proveedor">Proveedor</Label>
@@ -269,12 +393,7 @@ function ModalRegistrarCompra({
               </option>
             ))}
           </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="compra-monto">Monto de la compra (COP)</Label>
-          <Input id="compra-monto" type="number" min={0} value={monto} onChange={(e) => setMonto(e.target.value)} />
-          <FieldHint>Si supera el disponible del presupuesto, quedará pendiente de aprobación del Superadministrador.</FieldHint>
+          <FieldHint>Si el total por rubro supera el disponible del presupuesto, quedará pendiente de aprobación del Superadministrador.</FieldHint>
         </div>
 
         <div>

@@ -1,13 +1,25 @@
 import { Entity, parseDate } from "@/domain/entities/Entity";
 import { ESTADO_COMPRA, type EstadoCompra } from "@/domain/enums";
 
+export interface CompraItemRow {
+  id: string;
+  compra_id: string;
+  requisicion_item_id: string;
+  precio_unitario: number;
+  cantidad?: number | null;
+  observacion?: string | null;
+  producto_nombre?: string | null;
+  unidad_medida_nombre?: string | null;
+  unidad_medida_abreviatura?: string | null;
+}
+
 export interface CompraRow {
   id: string;
   requisicion_id: string;
   folio_oc: string;
   proveedor_id: string;
   proveedor_nombre?: string | null;
-  monto: number;
+  monto_total: number;
   excede_presupuesto: boolean;
   aprobado_superadmin_id: string | null;
   estado: EstadoCompra;
@@ -15,15 +27,17 @@ export interface CompraRow {
   fecha_entrega_estimada: string | null;
   fecha_cierre: string | null;
   notas: string | null;
+  items?: CompraItemRow[];
   created_at: string;
   updated_at: string;
 }
 
 /**
- * Orden de compra (OC). Representa la ejecución de una requisición ya
- * aprobada: valida el estado frente al presupuesto, calcula si sigue
- * dentro del plazo comprometido con el proveedor y expone el estado que
- * ven Supervisor/Usuario mientras la gestión de compras hace seguimiento.
+ * Orden de compra (OC). Representa la ejecución -- parcial o total -- de los
+ * ítems de una requisición ya aprobada: una requisición puede tener varias
+ * OC. Valida el estado frente al presupuesto por rubro, calcula si sigue
+ * dentro del plazo comprometido con el proveedor y expone el estado que ven
+ * Supervisor/Usuario mientras la gestión de compras hace seguimiento.
  */
 export class Compra extends Entity<CompraRow> {
   private constructor(
@@ -32,7 +46,7 @@ export class Compra extends Entity<CompraRow> {
     public readonly folioOc: string,
     public readonly proveedorId: string,
     public readonly proveedorNombre: string | null,
-    public readonly monto: number,
+    public readonly montoTotal: number,
     public readonly excedePresupuesto: boolean,
     public readonly aprobadoSuperadminId: string | null,
     public readonly estado: EstadoCompra,
@@ -40,6 +54,7 @@ export class Compra extends Entity<CompraRow> {
     public readonly fechaEntregaEstimada: Date | null,
     public readonly fechaCierre: Date | null,
     public readonly notas: string | null,
+    public readonly items: CompraItemRow[],
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -53,7 +68,7 @@ export class Compra extends Entity<CompraRow> {
       row.folio_oc,
       row.proveedor_id,
       row.proveedor_nombre ?? null,
-      Number(row.monto),
+      Number(row.monto_total),
       row.excede_presupuesto,
       row.aprobado_superadmin_id,
       row.estado,
@@ -61,6 +76,7 @@ export class Compra extends Entity<CompraRow> {
       row.fecha_entrega_estimada ? parseDate(row.fecha_entrega_estimada) : null,
       row.fecha_cierre ? parseDate(row.fecha_cierre) : null,
       row.notas,
+      row.items ?? [],
       parseDate(row.created_at),
       parseDate(row.updated_at),
     );
@@ -88,7 +104,7 @@ export class Compra extends Entity<CompraRow> {
       folio_oc: this.folioOc,
       proveedor_id: this.proveedorId,
       proveedor_nombre: this.proveedorNombre,
-      monto: this.monto,
+      monto_total: this.montoTotal,
       excede_presupuesto: this.excedePresupuesto,
       aprobado_superadmin_id: this.aprobadoSuperadminId,
       estado: this.estado,
@@ -96,6 +112,7 @@ export class Compra extends Entity<CompraRow> {
       fecha_entrega_estimada: this.fechaEntregaEstimada?.toISOString() ?? null,
       fecha_cierre: this.fechaCierre?.toISOString() ?? null,
       notas: this.notas,
+      items: this.items,
       created_at: this.createdAt.toISOString(),
       updated_at: this.updatedAt.toISOString(),
     };

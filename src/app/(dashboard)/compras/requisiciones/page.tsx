@@ -2,11 +2,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AuthService } from "@/services/AuthService";
 import { RequisicionService } from "@/services/RequisicionService";
-import { CompraService } from "@/services/CompraService";
 import { CatalogoService } from "@/services/CatalogoService";
 import { MODULOS } from "@/domain/enums";
 import { RequisicionesView } from "@/app/(dashboard)/compras/requisiciones/RequisicionesView";
-import type { RequisicionVM, OpcionCatalogo, PermisosRequisicionesVM } from "@/app/(dashboard)/compras/requisiciones/types";
+import type {
+  RequisicionVM,
+  ProductoOpcionVM,
+  PermisosRequisicionesVM,
+  SolicitanteVM,
+} from "@/app/(dashboard)/compras/requisiciones/types";
 
 export const metadata = { title: "Requisiciones" };
 
@@ -21,48 +25,66 @@ export default async function RequisicionesPage() {
 
   const requisicionSvc = new RequisicionService(supabase);
   const catalogoSvc = new CatalogoService(supabase);
-  const compraSvc = new CompraService(supabase);
 
-  const [requisiciones, areas, rubros, compras] = await Promise.all([
+  const [requisiciones, productos] = await Promise.all([
     requisicionSvc.listar(),
-    catalogoSvc.listarAreas(),
-    catalogoSvc.listarRubros(),
-    usuario.permisos.puedeLeer(MODULOS.COMPRAS_COMPRAS) ? compraSvc.listar() : Promise.resolve([]),
+    catalogoSvc.listarProductos(),
   ]);
-
-  const requisicionesConCompra = new Set(compras.map((c) => c.requisicionId));
 
   const vm: RequisicionVM[] = requisiciones.map((r) => ({
     id: r.id,
     folio: r.folio,
-    areaId: r.areaId,
     areaNombre: r.areaNombre ?? "—",
-    rubroId: r.rubroId,
-    rubroNombre: r.rubroNombre ?? "—",
+    ciudadOperacionNombre: r.ciudadOperacionNombre ?? "—",
     descripcion: r.descripcion,
-    montoEstimado: r.montoEstimado,
     estado: r.estado,
     solicitanteNombre: r.solicitanteNombre ?? "—",
     aprobadorNombre: r.aprobadorNombre,
+    motivoRechazo: r.motivoRechazo,
+    fechaAprobacion: r.fechaAprobacion?.toISOString() ?? null,
     diasRestantesParaComprar: r.diasRestantesParaComprar,
     plazoVencido: r.plazoVencido,
-    tieneCompraRegistrada: requisicionesConCompra.has(r.id),
+    estadoSemaforo: r.estadoSemaforo,
+    items: r.items.map((it) => ({
+      id: it.id,
+      productoId: it.producto_id,
+      productoNombre: it.producto_nombre ?? "—",
+      rubroNombre: it.rubro_nombre ?? "—",
+      unidadMedidaNombre: it.unidad_medida_nombre ?? "—",
+      unidadMedidaAbreviatura: it.unidad_medida_abreviatura ?? null,
+      cantidad: it.cantidad,
+      observacion: it.observacion,
+      comprado: it.comprado,
+    })),
     createdAt: r.createdAt.toISOString(),
   }));
 
-  const areasVM: OpcionCatalogo[] = areas.filter((a) => a.activo).map((a) => ({ id: a.id, nombre: a.nombre }));
-  const rubrosVM: OpcionCatalogo[] = rubros.filter((r) => r.activo).map((r) => ({ id: r.id, nombre: r.nombre }));
+  const productosVM: ProductoOpcionVM[] = productos
+    .filter((p) => p.activo)
+    .map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      rubroNombre: p.rubroNombre ?? "—",
+      unidadMedidaNombre: p.unidadMedidaNombre ?? "—",
+      unidadMedidaAbreviatura: p.unidadMedidaAbreviatura,
+    }));
+
+  const solicitante: SolicitanteVM = {
+    areaNombre: usuario.areaNombre ?? "Sin asignar",
+    ciudadOperacionNombre: usuario.ciudadOperacionNombre ?? "Sin asignar",
+  };
 
   const permisos: PermisosRequisicionesVM = {
     puedeCrear: usuario.permisos.puedeCrear(MODULOS.COMPRAS_REQUISICIONES),
-    puedeAprobar: usuario.permisos.puedeActualizar(MODULOS.COMPRAS_REQUISICIONES),
+    puedeAprobar: usuario.permisos.esSupervisor() || usuario.permisos.esSuperadministrador(),
+    puedeRechazar: usuario.permisos.esSuperadministrador(),
   };
 
   return (
     <RequisicionesView
       requisicionesIniciales={vm}
-      areas={areasVM}
-      rubros={rubrosVM}
+      productos={productosVM}
+      solicitante={solicitante}
       permisos={permisos}
     />
   );

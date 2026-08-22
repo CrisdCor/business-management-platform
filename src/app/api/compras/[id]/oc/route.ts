@@ -29,14 +29,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       data: {
         folioOc: compra.folioOc,
         fechaCompra: compra.fechaCompra.toISOString(),
-        monto: compra.monto,
+        montoTotal: compra.montoTotal,
         notas: compra.notas,
         fechaEntregaEstimada: compra.fechaEntregaEstimada?.toISOString() ?? null,
         requisicion: {
           folio: requisicion.folio,
           descripcion: requisicion.descripcion,
           areaNombre: requisicion.areaNombre ?? "—",
-          rubroNombre: requisicion.rubroNombre ?? "—",
+          ciudadOperacionNombre: requisicion.ciudadOperacionNombre ?? "—",
           solicitanteNombre: requisicion.solicitanteNombre ?? "—",
         },
         proveedor: {
@@ -46,6 +46,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
           tipoCuenta: proveedor.tipoCuenta,
           numeroCuenta: proveedor.numeroCuenta,
         },
+        items: compra.items.map((it) => ({
+          productoNombre: it.producto_nombre ?? "—",
+          cantidad: it.cantidad ?? 0,
+          unidadMedida: it.unidad_medida_abreviatura ?? it.unidad_medida_nombre ?? "",
+          precioUnitario: it.precio_unitario,
+          observacion: it.observacion ?? null,
+        })),
       },
     }),
   );

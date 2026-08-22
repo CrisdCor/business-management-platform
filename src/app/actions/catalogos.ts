@@ -117,3 +117,57 @@ export async function actualizarProveedorAction(
     return { ok: false, error: error instanceof Error ? error.message : "No se pudo actualizar el proveedor." };
   }
 }
+
+export async function crearUnidadMedidaAction(nombre: string, abreviatura: string | null): Promise<AccionResultado> {
+  const supabase = await createClient();
+  try {
+    await new CatalogoService(supabase).crearUnidadMedida(nombre, abreviatura);
+    revalidatePath("/compras/unidades-medida");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo crear la unidad de medida." };
+  }
+}
+
+export async function actualizarUnidadMedidaAction(
+  id: string,
+  cambios: { nombre?: string; abreviatura?: string | null; activo?: boolean },
+): Promise<AccionResultado> {
+  const supabase = await createClient();
+  try {
+    await new CatalogoService(supabase).actualizarUnidadMedida(id, cambios);
+    revalidatePath("/compras/unidades-medida");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo actualizar la unidad de medida." };
+  }
+}
+
+export async function crearProductoAction(input: {
+  nombre: string;
+  rubroId: string;
+  unidadMedidaId: string;
+}): Promise<AccionResultado> {
+  const supabase = await createClient();
+  try {
+    await new CatalogoService(supabase).crearProducto(input);
+    revalidatePath("/compras/productos");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo crear el producto." };
+  }
+}
+
+export async function actualizarProductoAction(
+  id: string,
+  cambios: Partial<{ nombre: string; rubroId: string; unidadMedidaId: string; activo: boolean }>,
+): Promise<AccionResultado> {
+  const supabase = await createClient();
+  try {
+    await new CatalogoService(supabase).actualizarProducto(id, cambios);
+    revalidatePath("/compras/productos");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo actualizar el producto." };
+  }
+}

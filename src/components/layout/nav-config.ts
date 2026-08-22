@@ -8,6 +8,8 @@ import {
   Users,
   Building2,
   MapPin,
+  Package,
+  Ruler,
   type LucideIcon,
 } from "lucide-react";
 import { MODULOS, type ModuloCodigo } from "@/domain/enums";
@@ -37,6 +39,8 @@ export const NAV_GROUPS: NavGroupConfig[] = [
       { href: "/compras/presupuestos", label: "Presupuestos", icon: Wallet, modulo: MODULOS.COMPRAS_PRESUPUESTOS },
       { href: "/compras/proveedores", label: "Proveedores", icon: Truck, modulo: MODULOS.COMPRAS_PROVEEDORES },
       { href: "/compras/rubros", label: "Rubros", icon: Tags, modulo: MODULOS.COMPRAS_RUBROS },
+      { href: "/compras/productos", label: "Productos", icon: Package, modulo: MODULOS.COMPRAS_PRODUCTOS },
+      { href: "/compras/unidades-medida", label: "Unidades de medida", icon: Ruler, modulo: MODULOS.COMPRAS_UNIDADES_MEDIDA },
     ],
   },
   {

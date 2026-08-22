@@ -64,6 +64,45 @@ export type Database = {
         }
         Relationships: []
       }
+      compra_items: {
+        Row: {
+          compra_id: string
+          created_at: string
+          id: string
+          precio_unitario: number
+          requisicion_item_id: string
+        }
+        Insert: {
+          compra_id: string
+          created_at?: string
+          id?: string
+          precio_unitario: number
+          requisicion_item_id: string
+        }
+        Update: {
+          compra_id?: string
+          created_at?: string
+          id?: string
+          precio_unitario?: number
+          requisicion_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compra_items_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_items_requisicion_item_id_fkey"
+            columns: ["requisicion_item_id"]
+            isOneToOne: true
+            referencedRelation: "requisicion_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compras: {
         Row: {
           aprobado_superadmin_id: string | null
@@ -75,7 +114,7 @@ export type Database = {
           fecha_entrega_estimada: string | null
           folio_oc: string | null
           id: string
-          monto: number
+          monto_total: number
           notas: string | null
           proveedor_id: string
           requisicion_id: string
@@ -91,7 +130,7 @@ export type Database = {
           fecha_entrega_estimada?: string | null
           folio_oc?: string | null
           id?: string
-          monto: number
+          monto_total?: number
           notas?: string | null
           proveedor_id: string
           requisicion_id: string
@@ -107,7 +146,7 @@ export type Database = {
           fecha_entrega_estimada?: string | null
           folio_oc?: string | null
           id?: string
-          monto?: number
+          monto_total?: number
           notas?: string | null
           proveedor_id?: string
           requisicion_id?: string
@@ -131,7 +170,7 @@ export type Database = {
           {
             foreignKeyName: "compras_requisicion_id_fkey"
             columns: ["requisicion_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "requisiciones"
             referencedColumns: ["id"]
           },
@@ -151,6 +190,47 @@ export type Database = {
           label?: string
         }
         Relationships: []
+      }
+      notificaciones: {
+        Row: {
+          created_at: string
+          entidad_id: string | null
+          entidad_tipo: string | null
+          id: string
+          leida: boolean
+          mensaje: string
+          titulo: string
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          entidad_id?: string | null
+          entidad_tipo?: string | null
+          id?: string
+          leida?: boolean
+          mensaje: string
+          titulo: string
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          entidad_id?: string | null
+          entidad_tipo?: string | null
+          id?: string
+          leida?: boolean
+          mensaje?: string
+          titulo?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       presupuestos: {
         Row: {
@@ -203,6 +283,51 @@ export type Database = {
           },
         ]
       }
+      productos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          id: string
+          nombre: string
+          rubro_id: string
+          unidad_medida_id: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nombre: string
+          rubro_id: string
+          unidad_medida_id: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nombre?: string
+          rubro_id?: string
+          unidad_medida_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "productos_rubro_id_fkey"
+            columns: ["rubro_id"]
+            isOneToOne: false
+            referencedRelation: "rubros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "productos_unidad_medida_id_fkey"
+            columns: ["unidad_medida_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_medida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proveedores: {
         Row: {
           activo: boolean
@@ -239,52 +364,114 @@ export type Database = {
         }
         Relationships: []
       }
+      requisicion_items: {
+        Row: {
+          cantidad: number
+          comprado: boolean
+          created_at: string
+          id: string
+          observacion: string | null
+          producto_id: string
+          requisicion_id: string
+          rubro_id: string
+          unidad_medida_id: string
+          updated_at: string
+        }
+        Insert: {
+          cantidad: number
+          comprado?: boolean
+          created_at?: string
+          id?: string
+          observacion?: string | null
+          producto_id: string
+          requisicion_id: string
+          rubro_id: string
+          unidad_medida_id: string
+          updated_at?: string
+        }
+        Update: {
+          cantidad?: number
+          comprado?: boolean
+          created_at?: string
+          id?: string
+          observacion?: string | null
+          producto_id?: string
+          requisicion_id?: string
+          rubro_id?: string
+          unidad_medida_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisicion_items_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicion_items_requisicion_id_fkey"
+            columns: ["requisicion_id"]
+            isOneToOne: false
+            referencedRelation: "requisiciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicion_items_rubro_id_fkey"
+            columns: ["rubro_id"]
+            isOneToOne: false
+            referencedRelation: "rubros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicion_items_unidad_medida_id_fkey"
+            columns: ["unidad_medida_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_medida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requisiciones: {
         Row: {
           aprobador_id: string | null
           area_id: string
+          ciudad_operacion_id: string | null
           created_at: string
-          descripcion: string
+          descripcion: string | null
           estado: string
           fecha_aprobacion: string | null
           folio: string | null
           id: string
-          monto_estimado: number
           motivo_rechazo: string | null
-          presupuesto_id: string
-          rubro_id: string
           solicitante_id: string
           updated_at: string
         }
         Insert: {
           aprobador_id?: string | null
           area_id: string
+          ciudad_operacion_id?: string | null
           created_at?: string
-          descripcion: string
+          descripcion?: string | null
           estado?: string
           fecha_aprobacion?: string | null
           folio?: string | null
           id?: string
-          monto_estimado: number
           motivo_rechazo?: string | null
-          presupuesto_id: string
-          rubro_id: string
           solicitante_id: string
           updated_at?: string
         }
         Update: {
           aprobador_id?: string | null
           area_id?: string
+          ciudad_operacion_id?: string | null
           created_at?: string
-          descripcion?: string
+          descripcion?: string | null
           estado?: string
           fecha_aprobacion?: string | null
           folio?: string | null
           id?: string
-          monto_estimado?: number
           motivo_rechazo?: string | null
-          presupuesto_id?: string
-          rubro_id?: string
           solicitante_id?: string
           updated_at?: string
         }
@@ -304,17 +491,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "requisiciones_presupuesto_id_fkey"
-            columns: ["presupuesto_id"]
+            foreignKeyName: "requisiciones_ciudad_operacion_id_fkey"
+            columns: ["ciudad_operacion_id"]
             isOneToOne: false
-            referencedRelation: "presupuestos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "requisiciones_rubro_id_fkey"
-            columns: ["rubro_id"]
-            isOneToOne: false
-            referencedRelation: "rubros"
+            referencedRelation: "ciudades_operacion"
             referencedColumns: ["id"]
           },
           {
@@ -362,6 +542,33 @@ export type Database = {
           activo?: boolean
           created_at?: string
           descripcion?: string | null
+          id?: string
+          nombre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      unidades_medida: {
+        Row: {
+          abreviatura: string | null
+          activo: boolean
+          created_at: string
+          id: string
+          nombre: string
+          updated_at: string
+        }
+        Insert: {
+          abreviatura?: string | null
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nombre: string
+          updated_at?: string
+        }
+        Update: {
+          abreviatura?: string | null
+          activo?: boolean
+          created_at?: string
           id?: string
           nombre?: string
           updated_at?: string
@@ -496,15 +703,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      aprobar_exceso_compra_oc: {
+        Args: { p_compra_id: string }
+        Returns: undefined
+      }
+      aprobar_requisicion: { Args: { p_id: string }; Returns: undefined }
+      crear_requisicion: {
+        Args: { p_descripcion?: string; p_items: Json }
+        Returns: string
+      }
       has_role: { Args: { p_rol: string }; Returns: boolean }
       is_superadmin: { Args: never; Returns: boolean }
       permiso: {
         Args: { p_accion: string; p_modulo: string }
         Returns: boolean
       }
+      rechazar_requisicion: {
+        Args: { p_id: string; p_motivo: string }
+        Returns: undefined
+      }
       reemplazar_roles_usuario: {
         Args: { p_roles: string[]; p_usuario_id: string }
         Returns: undefined
+      }
+      registrar_compra_oc: {
+        Args: {
+          p_fecha_entrega_estimada?: string
+          p_items: Json
+          p_notas?: string
+          p_proveedor_id: string
+          p_requisicion_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

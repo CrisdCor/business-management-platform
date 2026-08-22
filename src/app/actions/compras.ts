@@ -2,14 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { AuthService } from "@/services/AuthService";
 import { CompraService } from "@/services/CompraService";
 import type { AccionResultado } from "@/app/actions/auth";
 
 export async function registrarCompraAction(input: {
   requisicionId: string;
   proveedorId: string;
-  monto: number;
+  items: { requisicionItemId: string; precioUnitario: number }[];
   fechaEntregaEstimada: string | null;
   notas: string | null;
 }): Promise<AccionResultado> {
@@ -26,11 +25,8 @@ export async function registrarCompraAction(input: {
 
 export async function aprobarExcesoCompraAction(id: string): Promise<AccionResultado> {
   const supabase = await createClient();
-  const usuario = await new AuthService(supabase).usuarioActual();
-  if (!usuario) return { ok: false, error: "Sesión expirada." };
-
   try {
-    await new CompraService(supabase).aprobarExceso(id, usuario.id);
+    await new CompraService(supabase).aprobarExceso(id);
     revalidatePath("/compras/ordenes");
     return { ok: true };
   } catch (error) {
