@@ -18,10 +18,18 @@ export async function crearUsuarioAction(input: {
 }): Promise<AccionResultado> {
   const supabase = await createClient();
   try {
+    // DIAGNÓSTICO TEMPORAL: ver el payload real de creación. Quitar tras el incidente.
+    console.log(
+      "[diag crearUsuarioAction] correo=%s roles=%j permisos=%j",
+      input.correo,
+      input.roles,
+      input.permisos.filter((p) => p.crear || p.leer || p.actualizar || p.eliminar),
+    );
     await new UsuarioService(supabase).crear(input);
     revalidatePath("/administracion/usuarios");
     return { ok: true };
   } catch (error) {
+    console.error("[diag crearUsuarioAction] error:", error);
     return { ok: false, error: error instanceof Error ? error.message : "No se pudo crear el usuario." };
   }
 }
@@ -53,12 +61,26 @@ export async function actualizarUsuarioAction(
         activo: input.activo,
       });
     }
-    if (input.roles) await servicio.actualizarRoles(id, input.roles);
-    if (input.permisos) await servicio.actualizarPermisos(id, input.permisos);
+    if (input.roles) {
+      console.log("[diag actualizarUsuarioAction] usuarioId=%s roles=%j", id, input.roles);
+      await servicio.actualizarRoles(id, input.roles);
+    }
+    if (input.permisos) {
+      // DIAGNÓSTICO TEMPORAL: registrar qué llega realmente del cliente para
+      // depurar el reporte de permisos que no persisten en el módulo de
+      // Usuarios. Quitar una vez cerrado el incidente.
+      console.log(
+        "[diag actualizarUsuarioAction] usuarioId=%s permisos=%j",
+        id,
+        input.permisos.filter((p) => p.crear || p.leer || p.actualizar || p.eliminar),
+      );
+      await servicio.actualizarPermisos(id, input.permisos);
+    }
 
     revalidatePath("/administracion/usuarios");
     return { ok: true };
   } catch (error) {
+    console.error("[diag actualizarUsuarioAction] error:", error);
     return { ok: false, error: error instanceof Error ? error.message : "No se pudo actualizar el usuario." };
   }
 }
