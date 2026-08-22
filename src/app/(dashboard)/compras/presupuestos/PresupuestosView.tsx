@@ -223,6 +223,9 @@ function ModalAjustar({ presupuesto, onClose }: { presupuesto: PresupuestoVM | n
   const { notificar } = useToast();
 
   React.useEffect(() => {
+    // El formulario permanece montado durante la animación de salida del SlideOver;
+    // se reinicia explícitamente al cambiar de registro en vez de usar `key`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (presupuesto) setMonto(String(presupuesto.montoAsignado));
   }, [presupuesto]);
 

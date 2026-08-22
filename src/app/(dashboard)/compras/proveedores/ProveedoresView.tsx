@@ -121,7 +121,10 @@ function ModalProveedor({
   const { notificar } = useToast();
 
   React.useEffect(() => {
+    // El formulario permanece montado durante la animación de salida del SlideOver;
+    // se reinicia explícitamente al cambiar de registro en vez de usar `key`.
     if (proveedor) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNitCedula(proveedor.nitCedula);
       setNombre(proveedor.nombre);
       setBanco(proveedor.banco);

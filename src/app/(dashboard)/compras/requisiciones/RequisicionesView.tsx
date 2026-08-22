@@ -12,7 +12,7 @@ import { Input, Label, Textarea, FieldError } from "@/components/ui/Input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, EmptyState } from "@/components/ui/Table";
 import { BadgeEstadoRequisicion } from "@/components/compras/estado-badges";
 import { useToast } from "@/components/ui/Toast";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { ESTADO_REQUISICION } from "@/domain/enums";
 import {
   crearRequisicionAction,
@@ -168,6 +168,9 @@ function ModalRechazar({ requisicion, onClose }: { requisicion: RequisicionVM | 
   const { notificar } = useToast();
 
   React.useEffect(() => {
+    // El formulario permanece montado durante la animación de salida del SlideOver;
+    // se reinicia explícitamente al cambiar de registro en vez de usar `key`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (requisicion) setMotivo("");
   }, [requisicion]);
 

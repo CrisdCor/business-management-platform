@@ -37,6 +37,11 @@ export function SlideOver({ open, onClose, title, description, children, footer,
 
   React.useEffect(() => {
     if (open) {
+      // Patrón documentado de React para animar la salida de un componente: se
+      // mantiene montado y se controla su estado de transición desde un efecto
+      // ligado a la prop `open` (no puede resolverse con `key`, que desmontaría
+      // el contenido de inmediato en vez de dejarlo animar).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRenderizado(true);
       setSaliendo(false);
       return;

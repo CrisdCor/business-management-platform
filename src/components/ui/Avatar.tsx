@@ -19,8 +19,8 @@ export function Avatar({
     .join("");
 
   if (fotoUrl) {
-    // eslint-disable-next-line @next/next/no-img-element -- URL dinámica de Supabase Storage, sin dominio fijo para next/image
     return (
+      // eslint-disable-next-line @next/next/no-img-element -- URL dinámica de Supabase Storage, sin dominio fijo para next/image
       <img
         src={fotoUrl}
         alt={nombre}

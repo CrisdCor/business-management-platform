@@ -5,7 +5,6 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import type { UsuarioSesion } from "@/components/layout/UserMenu";
 import type { ModuloCodigo } from "@/domain/enums";
-import { cn } from "@/lib/utils";
 
 export function AppShell({
   usuario,

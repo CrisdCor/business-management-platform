@@ -100,6 +100,10 @@ function ModalArea({ open, onClose, area }: { open: boolean; onClose: () => void
   const { notificar } = useToast();
 
   React.useEffect(() => {
+    // El formulario permanece montado durante la animación de salida del SlideOver;
+    // se reinicia explícitamente al cambiar de registro/apertura en vez de usar `key`
+    // (que rompería la animación al desmontar de inmediato).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNombre(area?.nombre ?? "");
     setActivo(area?.activo ?? true);
     setError(null);

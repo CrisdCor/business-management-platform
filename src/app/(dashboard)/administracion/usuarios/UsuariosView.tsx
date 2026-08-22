@@ -148,6 +148,9 @@ function ModalResetPassword({ usuario, onClose }: { usuario: UsuarioVM | null; o
   const { notificar } = useToast();
 
   React.useEffect(() => {
+    // Genera una nueva contraseña temporal cada vez que se abre el modal para un
+    // usuario distinto; el formulario sigue montado durante la animación de salida.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (usuario) setPassword(generarPasswordTemporal());
   }, [usuario]);
 
@@ -218,7 +221,10 @@ function ModalUsuario({
   const { notificar } = useToast();
 
   React.useEffect(() => {
+    // El formulario permanece montado durante la animación de salida del SlideOver;
+    // se reinicia explícitamente al cambiar de registro en vez de usar `key`.
     if (usuario) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNombre(usuario.nombre);
       setCorreo(usuario.correo);
       setAreaId(usuario.areaId ?? "");
