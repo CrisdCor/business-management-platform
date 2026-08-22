@@ -7,7 +7,12 @@ interface UsuarioQueryRow extends UsuarioRow {
   area?: { nombre: string } | null;
   ciudad_operacion?: { nombre: string } | null;
   usuario_roles: { rol_code: RoleCode }[];
-  usuario_permisos: PermisoRow[];
+  // Forma real de la fila que devuelve `SELECT` (columna `modulo_code`, no
+  // `modulo`): se tipa aparte de `PermisoRow` a propósito, para que un typo
+  // como `p.modulo` (en vez de `p.modulo_code`) lo detecte el compilador en
+  // vez de colar un `undefined` silencioso — que es justo el bug que esto
+  // reemplaza (todas las filas colapsaban en una sola con `modulo: undefined`).
+  usuario_permisos: { modulo_code: string; crear: boolean; leer: boolean; actualizar: boolean; eliminar: boolean }[];
 }
 
 const SELECT =
@@ -26,7 +31,7 @@ export class UsuarioRepository {
     const roles = row.usuario_roles?.map((r) => r.rol_code) ?? [];
     const permisos: PermisoRow[] =
       row.usuario_permisos?.map((p) => ({
-        modulo: p.modulo as PermisoRow["modulo"],
+        modulo: p.modulo_code as PermisoRow["modulo"],
         crear: p.crear,
         leer: p.leer,
         actualizar: p.actualizar,
