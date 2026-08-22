@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { KeyRound, LogOut, ChevronDown } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { SlideOver } from "@/components/ui/SlideOver";
@@ -21,7 +20,6 @@ export function UserMenu({ usuario }: { usuario: UsuarioSesion }) {
   const [abierto, setAbierto] = React.useState(false);
   const [modalPassword, setModalPassword] = React.useState(false);
   const contenedorRef = React.useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   React.useEffect(() => {
     function onClickFuera(e: MouseEvent) {
@@ -63,7 +61,7 @@ export function UserMenu({ usuario }: { usuario: UsuarioSesion }) {
             <KeyRound className="size-4" /> Cambiar contraseña
           </button>
           <button
-            onClick={() => cerrarSesionAction().then(() => router.push("/login"))}
+            onClick={() => cerrarSesionAction()}
             className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] text-danger hover:bg-danger-bg"
           >
             <LogOut className="size-4" /> Cerrar sesión

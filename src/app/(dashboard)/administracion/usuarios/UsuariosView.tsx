@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Pencil, KeyRound } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FilterBar } from "@/components/ui/FilterBar";
@@ -222,6 +223,7 @@ function ModalUsuario({
   modulos: ModuloOpcion[];
 }) {
   const esEdicion = !!usuario;
+  const router = useRouter();
   const [nombre, setNombre] = React.useState("");
   const [correo, setCorreo] = React.useState("");
   const [areaId, setAreaId] = React.useState("");
@@ -316,6 +318,10 @@ function ModalUsuario({
       tono: "success",
     });
     onClose();
+    // Fuerza un refetch fresco desde el servidor: evita que al reabrir este u
+    // otro usuario se muestre por un instante una copia en caché del listado
+    // (roles/permisos) previa a este guardado.
+    router.refresh();
   }
 
   return (

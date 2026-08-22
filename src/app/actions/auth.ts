@@ -37,6 +37,11 @@ export async function cerrarSesionAction(): Promise<void> {
   const supabase = await createClient();
   const auth = new AuthService(supabase);
   await auth.cerrarSesion();
+  // Redirect en el propio server action (igual que el login) en vez de dejarlo
+  // a un router.push() del cliente: así el cambio de sesión siempre fuerza un
+  // render fresco desde el servidor y no arrastra caché de router del cliente
+  // de la sesión anterior hacia la nueva.
+  redirect("/login");
 }
 
 export async function cambiarPasswordAction(nuevaPassword: string): Promise<AccionResultado> {
