@@ -72,3 +72,19 @@ export async function resetearPasswordUsuarioAction(id: string, nuevaPassword: s
     return { ok: false, error: error instanceof Error ? error.message : "No se pudo resetear la contraseña." };
   }
 }
+
+/**
+ * Anulación (borrado completo, todas las tablas) de un usuario sin
+ * movimientos. Exclusiva del Superadministrador; la RPC `eliminar_usuario_
+ * definitivo` vuelve a validar esto aunque la UI ya lo filtre.
+ */
+export async function eliminarUsuarioDefinitivoAction(id: string): Promise<AccionResultado> {
+  const supabase = await createClient();
+  try {
+    await new UsuarioService(supabase).eliminarDefinitivo(id);
+    revalidatePath("/administracion/usuarios");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo eliminar el usuario." };
+  }
+}

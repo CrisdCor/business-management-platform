@@ -712,6 +712,10 @@ export type Database = {
         Args: { p_descripcion?: string; p_items: Json }
         Returns: string
       }
+      eliminar_usuario_definitivo: {
+        Args: { p_usuario_id: string }
+        Returns: undefined
+      }
       has_role: { Args: { p_rol: string }; Returns: boolean }
       is_superadmin: { Args: never; Returns: boolean }
       permiso: {

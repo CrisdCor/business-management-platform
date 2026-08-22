@@ -13,6 +13,7 @@ export interface UsuarioVM {
   activo: boolean;
   fotoUrl: string | null;
   permisos: PermisoRow[];
+  tieneMovimientos: boolean;
 }
 
 export interface OpcionCatalogo {
@@ -28,4 +29,5 @@ export interface ModuloOpcion {
 export interface PermisosUsuariosVM {
   puedeCrear: boolean;
   puedeActualizar: boolean;
+  puedeEliminar: boolean;
 }

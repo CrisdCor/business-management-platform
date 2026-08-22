@@ -56,6 +56,22 @@ export class AuthService {
     if (error) throw new Error(traducirErrorAuth(error.message));
   }
 
+  /**
+   * Borra por completo la cuenta de Auth (`auth.users` + sesiones/identidades
+   * internas) de un usuario cuyo perfil (`public.usuarios`) ya fue eliminado
+   * por la RPC `eliminar_usuario_definitivo`. Se trata como idempotente: si la
+   * cuenta ya no existe (reintento tras un fallo parcial previo) no es error.
+   */
+  static async eliminarUsuarioAuth(usuarioId: string): Promise<void> {
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.deleteUser(usuarioId);
+    if (error && !/not.*found/i.test(error.message)) {
+      throw new Error(
+        `El perfil se eliminó, pero no se pudo borrar la cuenta de acceso (${error.message}). Vuelve a intentarlo o contacta soporte.`,
+      );
+    }
+  }
+
   /** Crea el usuario de Auth + su perfil. Requiere permisos de administración (service role). */
   static async crearUsuarioConPerfil(input: {
     nombre: string;

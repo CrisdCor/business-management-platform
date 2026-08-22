@@ -2,18 +2,24 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, KeyRound } from "lucide-react";
+import { Plus, Pencil, KeyRound, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { SlideOver } from "@/components/ui/SlideOver";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Input, Label, FieldError, FieldHint } from "@/components/ui/Input";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, EmptyState } from "@/components/ui/Table";
 import { useToast } from "@/components/ui/Toast";
-import { crearUsuarioAction, actualizarUsuarioAction, resetearPasswordUsuarioAction } from "@/app/actions/usuarios";
+import {
+  crearUsuarioAction,
+  actualizarUsuarioAction,
+  resetearPasswordUsuarioAction,
+  eliminarUsuarioDefinitivoAction,
+} from "@/app/actions/usuarios";
 import { ROLES, ROLE_LABELS, type RoleCode } from "@/domain/enums";
 import type { PermisoRow } from "@/domain/entities/PermisoMatriz";
 import type { UsuarioVM, OpcionCatalogo, ModuloOpcion, PermisosUsuariosVM } from "@/app/(dashboard)/administracion/usuarios/types";
@@ -50,6 +56,9 @@ export function UsuariosView({
   const [modalCrear, setModalCrear] = React.useState(false);
   const [editar, setEditar] = React.useState<UsuarioVM | null>(null);
   const [resetear, setResetear] = React.useState<UsuarioVM | null>(null);
+  const [eliminar, setEliminar] = React.useState<UsuarioVM | null>(null);
+  const [eliminando, setEliminando] = React.useState(false);
+  const { notificar } = useToast();
 
   // Copia local del listado: se sincroniza con lo que manda el servidor, pero
   // además se actualiza al instante en `handleGuardado` con lo que se acaba de
@@ -71,6 +80,22 @@ export function UsuariosView({
 
   function handleGuardado(vm: UsuarioVM) {
     setUsuarios((prev) => (prev.some((u) => u.id === vm.id) ? prev.map((u) => (u.id === vm.id ? vm : u)) : [vm, ...prev]));
+  }
+
+  async function handleEliminar() {
+    if (!eliminar) return;
+    setEliminando(true);
+    const resultado = await eliminarUsuarioDefinitivoAction(eliminar.id);
+    setEliminando(false);
+
+    if (!resultado.ok) {
+      notificar({ titulo: "No se pudo eliminar", descripcion: resultado.error, tono: "danger" });
+      return;
+    }
+
+    setUsuarios((prev) => prev.filter((u) => u.id !== eliminar.id));
+    notificar({ titulo: "Usuario eliminado", descripcion: `${eliminar.nombre} se borró de todas las tablas.`, tono: "success" });
+    setEliminar(null);
   }
 
   const filtrados = usuarios.filter(
@@ -152,6 +177,17 @@ export function UsuariosView({
                           <KeyRound className="size-3.5" /> Password
                         </Button>
                       )}
+                      {permisos.puedeEliminar && u.id !== usuarioActualId && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={u.tieneMovimientos}
+                          title={u.tieneMovimientos ? "Tiene requisiciones o compras registradas: no puede eliminarse." : undefined}
+                          onClick={() => setEliminar(u)}
+                        >
+                          <Trash2 className="size-3.5" /> Eliminar
+                        </Button>
+                      )}
                     </div>
                   )}
                 </TableCell>
@@ -179,6 +215,20 @@ export function UsuariosView({
         onGuardado={handleGuardado}
       />
       <ModalResetPassword usuario={resetear} onClose={() => setResetear(null)} />
+      <ConfirmDialog
+        open={!!eliminar}
+        onClose={() => !eliminando && setEliminar(null)}
+        onConfirm={handleEliminar}
+        title="¿Eliminar este usuario?"
+        description={
+          eliminar
+            ? `Se borrará por completo a ${eliminar.nombre} (${eliminar.correo}): su perfil, roles, permisos, notificaciones y la cuenta de acceso. Esta acción no se puede deshacer.`
+            : undefined
+        }
+        confirmLabel="Sí, eliminar"
+        variant="danger"
+        loading={eliminando}
+      />
     </div>
   );
 }
@@ -378,6 +428,7 @@ function ModalUsuario({
         activo,
         fotoUrl: esEdicion ? usuario!.fotoUrl : null,
         permisos: matriz,
+        tieneMovimientos: esEdicion ? usuario!.tieneMovimientos : false,
       });
     }
 

@@ -100,6 +100,46 @@ export class UsuarioRepository {
     if (error) throw new Error(`[usuario_roles] reemplazar: ${error.message}`);
   }
 
+  /**
+   * IDs de usuarios con al menos un "movimiento" (solicitaron o aprobaron una
+   * requisición, o aprobaron un exceso de presupuesto en una compra). Se usa
+   * solo para reflejar en la UI cuáles NO son elegibles para el borrado
+   * definitivo; la RPC `eliminarDefinitivo` vuelve a validar esto mismo como
+   * fuente de verdad antes de borrar.
+   */
+  async idsConMovimientos(): Promise<Set<string>> {
+    const [requisiciones, compras] = await Promise.all([
+      this.client.from("requisiciones").select("solicitante_id, aprobador_id"),
+      this.client.from("compras").select("aprobado_superadmin_id"),
+    ]);
+    if (requisiciones.error) throw new Error(`[usuarios] idsConMovimientos (requisiciones): ${requisiciones.error.message}`);
+    if (compras.error) throw new Error(`[usuarios] idsConMovimientos (compras): ${compras.error.message}`);
+
+    const ids = new Set<string>();
+    for (const r of requisiciones.data ?? []) {
+      ids.add(r.solicitante_id);
+      if (r.aprobador_id) ids.add(r.aprobador_id);
+    }
+    for (const c of compras.data ?? []) {
+      if (c.aprobado_superadmin_id) ids.add(c.aprobado_superadmin_id);
+    }
+    return ids;
+  }
+
+  /**
+   * Borrado definitivo del perfil (`public.usuarios`): la función RPC
+   * `security definer` re-valida que quien llama es Superadministrador, que
+   * no se esté auto-eliminando, que el usuario no tenga movimientos y que no
+   * sea el único Superadministrador, antes de borrar. La cascada existente en
+   * el esquema se encarga de `usuario_roles`, `usuario_permisos` y
+   * `notificaciones`. La cuenta de `auth.users` se borra aparte (ver
+   * `AuthService.eliminarUsuarioAuth`).
+   */
+  async eliminarDefinitivo(usuarioId: string): Promise<void> {
+    const { error } = await this.client.rpc("eliminar_usuario_definitivo", { p_usuario_id: usuarioId });
+    if (error) throw new Error(error.message);
+  }
+
   async reemplazarPermisos(usuarioId: string, permisos: PermisoRow[]): Promise<void> {
     const { error: delError } = await this.client
       .from("usuario_permisos")

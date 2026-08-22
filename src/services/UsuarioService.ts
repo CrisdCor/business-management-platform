@@ -16,6 +16,10 @@ export class UsuarioService {
     return this.usuarios.findAll();
   }
 
+  idsConMovimientos() {
+    return this.usuarios.idsConMovimientos();
+  }
+
   obtener(id: string) {
     return this.usuarios.findById(id);
   }
@@ -73,5 +77,18 @@ export class UsuarioService {
   /** El Superadministrador resetea la contraseña de otro usuario (acción administrativa). */
   resetearPassword(id: string, nuevaPassword: string): Promise<void> {
     return AuthService.resetearPassword(id, nuevaPassword);
+  }
+
+  /**
+   * Anulación (borrado completo) de un usuario sin movimientos, exclusiva del
+   * Superadministrador. Primero borra el perfil vía RPC (valida autorización
+   * e invariantes de negocio) y, solo si eso tuvo éxito, borra la cuenta de
+   * Auth. Si el perfil ya no existe (reintento tras un fallo parcial previo),
+   * salta directo a borrar la cuenta de Auth.
+   */
+  async eliminarDefinitivo(id: string): Promise<void> {
+    const existe = await this.usuarios.findById(id);
+    if (existe) await this.usuarios.eliminarDefinitivo(id);
+    await AuthService.eliminarUsuarioAuth(id);
   }
 }

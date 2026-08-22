@@ -18,8 +18,10 @@ export default async function UsuariosPage() {
     return <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">No tienes acceso a este módulo.</div>;
   }
 
-  const [usuarios, areas, ciudadesOperacion] = await Promise.all([
-    new UsuarioService(supabase).listar(),
+  const usuarioService = new UsuarioService(supabase);
+  const [usuarios, idsConMovimientos, areas, ciudadesOperacion] = await Promise.all([
+    usuarioService.listar(),
+    usuarioService.idsConMovimientos(),
     new CatalogoService(supabase).listarAreas(),
     new CatalogoService(supabase).listarCiudadesOperacion(),
   ]);
@@ -36,6 +38,7 @@ export default async function UsuariosPage() {
     activo: u.activo,
     fotoUrl: u.fotoUrl,
     permisos: u.permisos.toRows(),
+    tieneMovimientos: idsConMovimientos.has(u.id),
   }));
 
   const areasVM: OpcionCatalogo[] = areas.filter((a) => a.activo).map((a) => ({ id: a.id, nombre: a.nombre }));
@@ -45,6 +48,10 @@ export default async function UsuariosPage() {
   const permisos: PermisosUsuariosVM = {
     puedeCrear: usuario.permisos.puedeCrear(MODULOS.ADMIN_USUARIOS),
     puedeActualizar: usuario.permisos.puedeActualizar(MODULOS.ADMIN_USUARIOS),
+    // La anulación (borrado completo) es exclusiva del Superadministrador,
+    // igual que rechazar una requisición: no depende de la matriz de permisos
+    // por módulo, sino del rol exacto (la RPC lo vuelve a exigir server-side).
+    puedeEliminar: usuario.permisos.esSuperadministrador(),
   };
 
   return (
