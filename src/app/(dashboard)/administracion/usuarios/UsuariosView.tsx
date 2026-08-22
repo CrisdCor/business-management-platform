@@ -33,12 +33,14 @@ function generarPasswordTemporal(): string {
 export function UsuariosView({
   usuariosIniciales,
   areas,
+  ciudadesOperacion,
   modulos,
   permisos,
   usuarioActualId,
 }: {
   usuariosIniciales: UsuarioVM[];
   areas: OpcionCatalogo[];
+  ciudadesOperacion: OpcionCatalogo[];
   modulos: ModuloOpcion[];
   permisos: PermisosUsuariosVM;
   usuarioActualId: string;
@@ -72,7 +74,7 @@ export function UsuariosView({
         <Table>
           <TableBody>
             <tr>
-              <td colSpan={5}>
+              <td colSpan={6}>
                 <EmptyState title="Sin usuarios" description="Crea el primer usuario del sistema." />
               </td>
             </tr>
@@ -84,6 +86,7 @@ export function UsuariosView({
             <tr>
               <TableHead>Usuario</TableHead>
               <TableHead>Área</TableHead>
+              <TableHead>Ciudad de operación</TableHead>
               <TableHead>Roles</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -102,6 +105,7 @@ export function UsuariosView({
                   </div>
                 </TableCell>
                 <TableCell>{u.areaNombre ?? "—"}</TableCell>
+                <TableCell>{u.ciudadOperacionNombre ?? "—"}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {u.roles.map((r) => (
@@ -134,8 +138,15 @@ export function UsuariosView({
         </Table>
       )}
 
-      <ModalUsuario open={modalCrear} onClose={() => setModalCrear(false)} areas={areas} modulos={modulos} />
-      <ModalUsuario usuario={editar} open={!!editar} onClose={() => setEditar(null)} areas={areas} modulos={modulos} />
+      <ModalUsuario open={modalCrear} onClose={() => setModalCrear(false)} areas={areas} ciudadesOperacion={ciudadesOperacion} modulos={modulos} />
+      <ModalUsuario
+        usuario={editar}
+        open={!!editar}
+        onClose={() => setEditar(null)}
+        areas={areas}
+        ciudadesOperacion={ciudadesOperacion}
+        modulos={modulos}
+      />
       <ModalResetPassword usuario={resetear} onClose={() => setResetear(null)} />
     </div>
   );
@@ -200,18 +211,21 @@ function ModalUsuario({
   onClose,
   usuario,
   areas,
+  ciudadesOperacion,
   modulos,
 }: {
   open: boolean;
   onClose: () => void;
   usuario?: UsuarioVM | null;
   areas: OpcionCatalogo[];
+  ciudadesOperacion: OpcionCatalogo[];
   modulos: ModuloOpcion[];
 }) {
   const esEdicion = !!usuario;
   const [nombre, setNombre] = React.useState("");
   const [correo, setCorreo] = React.useState("");
   const [areaId, setAreaId] = React.useState("");
+  const [ciudadOperacionId, setCiudadOperacionId] = React.useState("");
   const [roles, setRoles] = React.useState<RoleCode[]>([]);
   const [matriz, setMatriz] = React.useState<PermisoRow[]>(matrizVacia(modulos));
   const [passwordTemporal, setPasswordTemporal] = React.useState("");
@@ -228,6 +242,7 @@ function ModalUsuario({
       setNombre(usuario.nombre);
       setCorreo(usuario.correo);
       setAreaId(usuario.areaId ?? "");
+      setCiudadOperacionId(usuario.ciudadOperacionId ?? "");
       setRoles(usuario.roles);
       setMatriz(modulos.map((m) => usuario.permisos.find((p) => p.modulo === m.code) ?? { modulo: m.code, crear: false, leer: false, actualizar: false, eliminar: false }));
       setActivo(usuario.activo);
@@ -235,6 +250,7 @@ function ModalUsuario({
       setNombre("");
       setCorreo("");
       setAreaId("");
+      setCiudadOperacionId("");
       setRoles([]);
       setMatriz(matrizVacia(modulos));
       setPasswordTemporal(generarPasswordTemporal());
@@ -264,6 +280,7 @@ function ModalUsuario({
       ? await actualizarUsuarioAction(usuario!.id, {
           nombre,
           areaId: areaId || null,
+          ciudadOperacionId: ciudadOperacionId || null,
           activo,
           roles,
           permisos: matriz,
@@ -272,6 +289,7 @@ function ModalUsuario({
           nombre,
           correo,
           areaId: areaId || null,
+          ciudadOperacionId: ciudadOperacionId || null,
           roles,
           permisos: matriz,
           passwordTemporal,
@@ -317,6 +335,17 @@ function ModalUsuario({
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.nombre}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="us-ciudad">Ciudad de operación</Label>
+            <Select id="us-ciudad" value={ciudadOperacionId} onChange={(e) => setCiudadOperacionId(e.target.value)}>
+              <option value="">Sin ciudad</option>
+              {ciudadesOperacion.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
                 </option>
               ))}
             </Select>

@@ -7,6 +7,8 @@ export interface UsuarioVM {
   correo: string;
   areaId: string | null;
   areaNombre: string | null;
+  ciudadOperacionId: string | null;
+  ciudadOperacionNombre: string | null;
   roles: RoleCode[];
   activo: boolean;
   fotoUrl: string | null;

@@ -8,6 +8,8 @@ export interface UsuarioRow {
   correo: string;
   area_id: string | null;
   area_nombre?: string | null;
+  ciudad_operacion_id: string | null;
+  ciudad_operacion_nombre?: string | null;
   roles: RoleCode[];
   foto_url: string | null;
   activo: boolean;
@@ -21,6 +23,8 @@ export interface UsuarioProps {
   correo: string;
   areaId: string | null;
   areaNombre?: string | null;
+  ciudadOperacionId: string | null;
+  ciudadOperacionNombre?: string | null;
   roles: RoleCode[];
   permisos: PermisoRow[];
   fotoUrl: string | null;
@@ -40,6 +44,8 @@ export class Usuario extends Entity<UsuarioRow> {
   public readonly correo: string;
   public readonly areaId: string | null;
   public readonly areaNombre: string | null;
+  public readonly ciudadOperacionId: string | null;
+  public readonly ciudadOperacionNombre: string | null;
   public readonly fotoUrl: string | null;
   public readonly activo: boolean;
   public readonly permisos: PermisoMatriz;
@@ -50,6 +56,8 @@ export class Usuario extends Entity<UsuarioRow> {
     this.correo = props.correo;
     this.areaId = props.areaId;
     this.areaNombre = props.areaNombre ?? null;
+    this.ciudadOperacionId = props.ciudadOperacionId;
+    this.ciudadOperacionNombre = props.ciudadOperacionNombre ?? null;
     this.fotoUrl = props.fotoUrl;
     this.activo = props.activo;
     this.permisos = PermisoMatriz.desde(props.roles, props.permisos);
@@ -66,6 +74,8 @@ export class Usuario extends Entity<UsuarioRow> {
       correo: row.correo,
       areaId: row.area_id,
       areaNombre: row.area_nombre,
+      ciudadOperacionId: row.ciudad_operacion_id,
+      ciudadOperacionNombre: row.ciudad_operacion_nombre,
       roles: row.roles,
       permisos,
       fotoUrl: row.foto_url,
@@ -100,6 +110,8 @@ export class Usuario extends Entity<UsuarioRow> {
       correo: this.correo,
       area_id: this.areaId,
       area_nombre: this.areaNombre,
+      ciudad_operacion_id: this.ciudadOperacionId,
+      ciudad_operacion_nombre: this.ciudadOperacionNombre,
       roles: this.permisos.getRoles(),
       foto_url: this.fotoUrl,
       activo: this.activo,

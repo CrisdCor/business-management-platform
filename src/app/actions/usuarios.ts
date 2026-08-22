@@ -11,6 +11,7 @@ export async function crearUsuarioAction(input: {
   nombre: string;
   correo: string;
   areaId: string | null;
+  ciudadOperacionId: string | null;
   roles: RoleCode[];
   permisos: PermisoRow[];
   passwordTemporal: string;
@@ -30,6 +31,7 @@ export async function actualizarUsuarioAction(
   input: {
     nombre?: string;
     areaId?: string | null;
+    ciudadOperacionId?: string | null;
     activo?: boolean;
     roles?: RoleCode[];
     permisos?: PermisoRow[];
@@ -38,10 +40,16 @@ export async function actualizarUsuarioAction(
   const supabase = await createClient();
   const servicio = new UsuarioService(supabase);
   try {
-    if (input.nombre !== undefined || input.areaId !== undefined || input.activo !== undefined) {
+    if (
+      input.nombre !== undefined ||
+      input.areaId !== undefined ||
+      input.ciudadOperacionId !== undefined ||
+      input.activo !== undefined
+    ) {
       await servicio.actualizarPerfil(id, {
         nombre: input.nombre,
         areaId: input.areaId,
+        ciudadOperacionId: input.ciudadOperacionId,
         activo: input.activo,
       });
     }

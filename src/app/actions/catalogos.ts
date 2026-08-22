@@ -31,6 +31,31 @@ export async function actualizarAreaAction(
   }
 }
 
+export async function crearCiudadOperacionAction(nombre: string): Promise<AccionResultado> {
+  const supabase = await createClient();
+  try {
+    await new CatalogoService(supabase).crearCiudadOperacion(nombre);
+    revalidatePath("/administracion/ciudades");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo crear la ciudad de operación." };
+  }
+}
+
+export async function actualizarCiudadOperacionAction(
+  id: string,
+  cambios: { nombre?: string; activo?: boolean },
+): Promise<AccionResultado> {
+  const supabase = await createClient();
+  try {
+    await new CatalogoService(supabase).actualizarCiudadOperacion(id, cambios);
+    revalidatePath("/administracion/ciudades");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo actualizar la ciudad de operación." };
+  }
+}
+
 export async function crearRubroAction(nombre: string, descripcion: string | null): Promise<AccionResultado> {
   const supabase = await createClient();
   try {

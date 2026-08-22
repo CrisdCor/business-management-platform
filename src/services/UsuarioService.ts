@@ -24,6 +24,7 @@ export class UsuarioService {
     nombre: string;
     correo: string;
     areaId: string | null;
+    ciudadOperacionId: string | null;
     roles: RoleCode[];
     permisos: PermisoRow[];
     passwordTemporal: string;
@@ -33,6 +34,7 @@ export class UsuarioService {
       correo: input.correo,
       passwordTemporal: input.passwordTemporal,
       areaId: input.areaId,
+      ciudadOperacionId: input.ciudadOperacionId,
     });
 
     await this.usuarios.reemplazarRoles(usuarioId, input.roles);
@@ -43,11 +45,18 @@ export class UsuarioService {
 
   async actualizarPerfil(
     id: string,
-    cambios: { nombre?: string; areaId?: string | null; fotoUrl?: string | null; activo?: boolean },
+    cambios: {
+      nombre?: string;
+      areaId?: string | null;
+      ciudadOperacionId?: string | null;
+      fotoUrl?: string | null;
+      activo?: boolean;
+    },
   ): Promise<void> {
     await this.usuarios.actualizarPerfil(id, {
       ...(cambios.nombre !== undefined ? { nombre: cambios.nombre } : {}),
       ...(cambios.areaId !== undefined ? { area_id: cambios.areaId } : {}),
+      ...(cambios.ciudadOperacionId !== undefined ? { ciudad_operacion_id: cambios.ciudadOperacionId } : {}),
       ...(cambios.fotoUrl !== undefined ? { foto_url: cambios.fotoUrl } : {}),
       ...(cambios.activo !== undefined ? { activo: cambios.activo } : {}),
     });

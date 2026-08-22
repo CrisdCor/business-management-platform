@@ -1,17 +1,20 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AreaRepository } from "@/repositories/AreaRepository";
+import { CiudadOperacionRepository } from "@/repositories/CiudadOperacionRepository";
 import { RubroRepository } from "@/repositories/RubroRepository";
 import { ProveedorRepository } from "@/repositories/ProveedorRepository";
 import type { TipoCuentaBancaria } from "@/domain/enums";
 
-/** Orquesta los catálogos gestionables por el Superadministrador: áreas, rubros y proveedores. */
+/** Orquesta los catálogos gestionables por el Superadministrador: áreas, ciudades de operación, rubros y proveedores. */
 export class CatalogoService {
   private readonly areas: AreaRepository;
+  private readonly ciudadesOperacion: CiudadOperacionRepository;
   private readonly rubros: RubroRepository;
   private readonly proveedores: ProveedorRepository;
 
   constructor(client: SupabaseClient) {
     this.areas = new AreaRepository(client);
+    this.ciudadesOperacion = new CiudadOperacionRepository(client);
     this.rubros = new RubroRepository(client);
     this.proveedores = new ProveedorRepository(client);
   }
@@ -26,6 +29,18 @@ export class CatalogoService {
 
   actualizarArea(id: string, cambios: { nombre?: string; activo?: boolean }) {
     return this.areas.update(id, cambios);
+  }
+
+  listarCiudadesOperacion() {
+    return this.ciudadesOperacion.findAll();
+  }
+
+  crearCiudadOperacion(nombre: string) {
+    return this.ciudadesOperacion.insert({ nombre, activo: true });
+  }
+
+  actualizarCiudadOperacion(id: string, cambios: { nombre?: string; activo?: boolean }) {
+    return this.ciudadesOperacion.update(id, cambios);
   }
 
   listarRubros() {

@@ -18,9 +18,10 @@ export default async function UsuariosPage() {
     return <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">No tienes acceso a este módulo.</div>;
   }
 
-  const [usuarios, areas] = await Promise.all([
+  const [usuarios, areas, ciudadesOperacion] = await Promise.all([
     new UsuarioService(supabase).listar(),
     new CatalogoService(supabase).listarAreas(),
+    new CatalogoService(supabase).listarCiudadesOperacion(),
   ]);
 
   const vm: UsuarioVM[] = usuarios.map((u) => ({
@@ -29,6 +30,8 @@ export default async function UsuariosPage() {
     correo: u.correo,
     areaId: u.areaId,
     areaNombre: u.areaNombre,
+    ciudadOperacionId: u.ciudadOperacionId,
+    ciudadOperacionNombre: u.ciudadOperacionNombre,
     roles: u.permisos.getRoles(),
     activo: u.activo,
     fotoUrl: u.fotoUrl,
@@ -36,6 +39,7 @@ export default async function UsuariosPage() {
   }));
 
   const areasVM: OpcionCatalogo[] = areas.filter((a) => a.activo).map((a) => ({ id: a.id, nombre: a.nombre }));
+  const ciudadesVM: OpcionCatalogo[] = ciudadesOperacion.filter((c) => c.activo).map((c) => ({ id: c.id, nombre: c.nombre }));
   const modulos: ModuloOpcion[] = Object.values(MODULOS).map((code) => ({ code, label: MODULO_LABELS[code] }));
 
   const permisos: PermisosUsuariosVM = {
@@ -43,5 +47,14 @@ export default async function UsuariosPage() {
     puedeActualizar: usuario.permisos.puedeActualizar(MODULOS.ADMIN_USUARIOS),
   };
 
-  return <UsuariosView usuariosIniciales={vm} areas={areasVM} modulos={modulos} permisos={permisos} usuarioActualId={usuario.id} />;
+  return (
+    <UsuariosView
+      usuariosIniciales={vm}
+      areas={areasVM}
+      ciudadesOperacion={ciudadesVM}
+      modulos={modulos}
+      permisos={permisos}
+      usuarioActualId={usuario.id}
+    />
+  );
 }

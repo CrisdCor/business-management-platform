@@ -7,6 +7,7 @@ import {
   Truck,
   Users,
   Building2,
+  MapPin,
   type LucideIcon,
 } from "lucide-react";
 import { MODULOS, type ModuloCodigo } from "@/domain/enums";
@@ -43,6 +44,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
     items: [
       { href: "/administracion/usuarios", label: "Usuarios", icon: Users, modulo: MODULOS.ADMIN_USUARIOS },
       { href: "/administracion/areas", label: "Áreas", icon: Building2, modulo: MODULOS.ADMIN_AREAS },
+      { href: "/administracion/ciudades", label: "Ciudades de operación", icon: MapPin, modulo: MODULOS.ADMIN_CIUDADES },
     ],
   },
 ];

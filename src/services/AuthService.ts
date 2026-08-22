@@ -62,6 +62,7 @@ export class AuthService {
     correo: string;
     passwordTemporal: string;
     areaId: string | null;
+    ciudadOperacionId: string | null;
   }): Promise<string> {
     const admin = createAdminClient();
     const { data, error } = await admin.auth.admin.createUser({
@@ -77,6 +78,7 @@ export class AuthService {
       nombre: input.nombre,
       correo: input.correo,
       area_id: input.areaId,
+      ciudad_operacion_id: input.ciudadOperacionId,
     });
     if (perfilError) throw new Error(perfilError.message);
 

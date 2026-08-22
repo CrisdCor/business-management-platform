@@ -37,6 +37,7 @@ export const MODULOS = {
   COMPRAS_PROVEEDORES: "compras.proveedores",
   ADMIN_USUARIOS: "admin.usuarios",
   ADMIN_AREAS: "admin.areas",
+  ADMIN_CIUDADES: "admin.ciudades",
   ADMIN_PERMISOS: "admin.permisos",
 } as const;
 export type ModuloCodigo = (typeof MODULOS)[keyof typeof MODULOS];
@@ -49,6 +50,7 @@ export const MODULO_LABELS: Record<ModuloCodigo, string> = {
   [MODULOS.COMPRAS_PROVEEDORES]: "Proveedores",
   [MODULOS.ADMIN_USUARIOS]: "Usuarios",
   [MODULOS.ADMIN_AREAS]: "Áreas",
+  [MODULOS.ADMIN_CIUDADES]: "Ciudades de operación",
   [MODULOS.ADMIN_PERMISOS]: "Permisos",
 };
 
