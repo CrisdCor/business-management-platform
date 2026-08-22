@@ -51,7 +51,29 @@ export function UsuariosView({
   const [editar, setEditar] = React.useState<UsuarioVM | null>(null);
   const [resetear, setResetear] = React.useState<UsuarioVM | null>(null);
 
-  const filtrados = usuariosIniciales.filter(
+  // Copia local del listado: se sincroniza con lo que manda el servidor, pero
+  // además se actualiza al instante en `handleGuardado` con lo que se acaba de
+  // guardar. Esto evita depender de que revalidatePath()/router.refresh() ya
+  // hayan propagado la nueva prop antes de que el usuario reabra el modal (esa
+  // carrera es la causa de que los cambios "parecieran" no guardarse: se
+  // guardaban en la base de datos, pero al reabrir se leía todavía la lista
+  // vieja).
+  const [usuariosPropAnterior, setUsuariosPropAnterior] = React.useState(usuariosIniciales);
+  const [usuarios, setUsuarios] = React.useState<UsuarioVM[]>(usuariosIniciales);
+  // Ajuste de estado derivado de una prop durante el render (patrón
+  // recomendado por React en vez de un useEffect) para resincronizar con el
+  // servidor cuando `usuariosIniciales` cambia de identidad (p. ej. tras un
+  // router.refresh() o una navegación).
+  if (usuariosIniciales !== usuariosPropAnterior) {
+    setUsuariosPropAnterior(usuariosIniciales);
+    setUsuarios(usuariosIniciales);
+  }
+
+  function handleGuardado(vm: UsuarioVM) {
+    setUsuarios((prev) => (prev.some((u) => u.id === vm.id) ? prev.map((u) => (u.id === vm.id ? vm : u)) : [vm, ...prev]));
+  }
+
+  const filtrados = usuarios.filter(
     (u) => !busqueda || u.nombre.toLowerCase().includes(busqueda.toLowerCase()) || u.correo.toLowerCase().includes(busqueda.toLowerCase()),
   );
 
@@ -139,7 +161,14 @@ export function UsuariosView({
         </Table>
       )}
 
-      <ModalUsuario open={modalCrear} onClose={() => setModalCrear(false)} areas={areas} ciudadesOperacion={ciudadesOperacion} modulos={modulos} />
+      <ModalUsuario
+        open={modalCrear}
+        onClose={() => setModalCrear(false)}
+        areas={areas}
+        ciudadesOperacion={ciudadesOperacion}
+        modulos={modulos}
+        onGuardado={handleGuardado}
+      />
       <ModalUsuario
         usuario={editar}
         open={!!editar}
@@ -147,6 +176,7 @@ export function UsuariosView({
         areas={areas}
         ciudadesOperacion={ciudadesOperacion}
         modulos={modulos}
+        onGuardado={handleGuardado}
       />
       <ModalResetPassword usuario={resetear} onClose={() => setResetear(null)} />
     </div>
@@ -214,6 +244,7 @@ function ModalUsuario({
   areas,
   ciudadesOperacion,
   modulos,
+  onGuardado,
 }: {
   open: boolean;
   onClose: () => void;
@@ -221,6 +252,7 @@ function ModalUsuario({
   areas: OpcionCatalogo[];
   ciudadesOperacion: OpcionCatalogo[];
   modulos: ModuloOpcion[];
+  onGuardado: (usuario: UsuarioVM) => void;
 }) {
   const esEdicion = !!usuario;
   const router = useRouter();
@@ -290,37 +322,68 @@ function ModalUsuario({
     if (!esEdicion && passwordTemporal.length < 6) return setError("La contraseña temporal debe tener al menos 6 caracteres.");
 
     setCargando(true);
-    const resultado = esEdicion
-      ? await actualizarUsuarioAction(usuario!.id, {
-          nombre,
-          areaId: areaId || null,
-          ciudadOperacionId: ciudadOperacionId || null,
-          activo,
-          roles,
-          permisos: matriz,
-        })
-      : await crearUsuarioAction({
-          nombre,
-          correo,
-          areaId: areaId || null,
-          ciudadOperacionId: ciudadOperacionId || null,
-          roles,
-          permisos: matriz,
-          passwordTemporal,
-        });
+    let ok: boolean;
+    let mensajeError: string | undefined;
+    let idGuardado: string | undefined;
+    if (esEdicion) {
+      const resultado = await actualizarUsuarioAction(usuario!.id, {
+        nombre,
+        areaId: areaId || null,
+        ciudadOperacionId: ciudadOperacionId || null,
+        activo,
+        roles,
+        permisos: matriz,
+      });
+      ok = resultado.ok;
+      mensajeError = resultado.error;
+      idGuardado = usuario!.id;
+    } else {
+      const resultado = await crearUsuarioAction({
+        nombre,
+        correo,
+        areaId: areaId || null,
+        ciudadOperacionId: ciudadOperacionId || null,
+        roles,
+        permisos: matriz,
+        passwordTemporal,
+      });
+      ok = resultado.ok;
+      mensajeError = resultado.error;
+      idGuardado = resultado.id;
+    }
     setCargando(false);
 
-    if (!resultado.ok) return setError(resultado.error ?? "No se pudo guardar el usuario.");
+    if (!ok) return setError(mensajeError ?? "No se pudo guardar el usuario.");
 
     notificar({
       titulo: esEdicion ? "Usuario actualizado" : "Usuario creado",
       descripcion: !esEdicion ? `Contraseña temporal: ${passwordTemporal}` : undefined,
       tono: "success",
     });
+
+    // Refleja de inmediato lo recién guardado en la lista del padre: no depende
+    // de que revalidatePath()/router.refresh() ya hayan traído la prop
+    // actualizada (esa carrera era la causa real de que roles/permisos
+    // "parecieran" no guardarse al reabrir justo después de guardar).
+    if (idGuardado) {
+      onGuardado({
+        id: idGuardado,
+        nombre,
+        correo: esEdicion ? usuario!.correo : correo,
+        areaId: areaId || null,
+        areaNombre: areas.find((a) => a.id === areaId)?.nombre ?? null,
+        ciudadOperacionId: ciudadOperacionId || null,
+        ciudadOperacionNombre: ciudadesOperacion.find((c) => c.id === ciudadOperacionId)?.nombre ?? null,
+        roles,
+        activo,
+        fotoUrl: esEdicion ? usuario!.fotoUrl : null,
+        permisos: matriz,
+      });
+    }
+
     onClose();
-    // Fuerza un refetch fresco desde el servidor: evita que al reabrir este u
-    // otro usuario se muestre por un instante una copia en caché del listado
-    // (roles/permisos) previa a este guardado.
+    // Además, fuerza un refetch del servidor en segundo plano para mantener
+    // sincronizado lo que vería otra pestaña/administrador.
     router.refresh();
   }
 
