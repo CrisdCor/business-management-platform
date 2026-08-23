@@ -6,7 +6,6 @@ import type { RoleCode } from "@/domain/enums";
 interface UsuarioQueryRow extends UsuarioRow {
   area?: { nombre: string } | null;
   ciudad_operacion?: { nombre: string } | null;
-  supervisor?: { nombre: string } | null;
   usuario_roles: { rol_code: RoleCode }[];
   // Forma real de la fila que devuelve `SELECT` (columna `modulo_code`, no
   // `modulo`): se tipa aparte de `PermisoRow` a propósito, para que un typo
@@ -16,8 +15,13 @@ interface UsuarioQueryRow extends UsuarioRow {
   usuario_permisos: { modulo_code: string; crear: boolean; leer: boolean; actualizar: boolean; eliminar: boolean }[];
 }
 
+// El nombre del supervisor NO se embebe aquí (`usuarios!usuarios_supervisor_id_fkey`):
+// PostgREST no resolvió esa relación auto-referenciada (usuarios -> usuarios)
+// ni siquiera tras recargar su caché de esquema en producción ("Could not
+// find a relationship between 'usuarios' and 'usuarios'"), así que se
+// resuelve aparte en `resolverNombresSupervisores`.
 const SELECT =
-  "*, area:areas(nombre), ciudad_operacion:ciudades_operacion(nombre), supervisor:usuarios!usuarios_supervisor_id_fkey(nombre), usuario_roles(rol_code), usuario_permisos(modulo_code, crear, leer, actualizar, eliminar)";
+  "*, area:areas(nombre), ciudad_operacion:ciudades_operacion(nombre), usuario_roles(rol_code), usuario_permisos(modulo_code, crear, leer, actualizar, eliminar)";
 
 /**
  * Repositorio de usuarios. No hereda de `BaseRepository` porque la entidad
@@ -28,7 +32,7 @@ const SELECT =
 export class UsuarioRepository {
   constructor(private readonly client: SupabaseClient) {}
 
-  private mapRow(row: UsuarioQueryRow): Usuario {
+  private mapRow(row: UsuarioQueryRow, supervisorNombre: string | null = null): Usuario {
     const roles = row.usuario_roles?.map((r) => r.rol_code) ?? [];
     const permisos: PermisoRow[] =
       row.usuario_permisos?.map((p) => ({
@@ -44,17 +48,33 @@ export class UsuarioRepository {
         ...row,
         area_nombre: row.area?.nombre ?? null,
         ciudad_operacion_nombre: row.ciudad_operacion?.nombre ?? null,
-        supervisor_nombre: row.supervisor?.nombre ?? null,
+        supervisor_nombre: supervisorNombre,
         roles,
       },
       permisos,
     );
   }
 
+  /**
+   * Resuelve `nombre` para un conjunto de `supervisor_id` con una consulta
+   * plana (no un embed) -- ver la nota junto a `SELECT` sobre por qué no se
+   * embebe directamente.
+   */
+  private async resolverNombresSupervisores(ids: (string | null | undefined)[]): Promise<Map<string, string>> {
+    const distintos = Array.from(new Set(ids.filter((id): id is string => !!id)));
+    if (distintos.length === 0) return new Map();
+
+    const { data, error } = await this.client.from("usuarios").select("id, nombre").in("id", distintos);
+    if (error) throw new Error(`[usuarios] resolverNombresSupervisores: ${error.message}`);
+    return new Map((data ?? []).map((u) => [u.id as string, u.nombre as string]));
+  }
+
   async findAll(): Promise<Usuario[]> {
     const { data, error } = await this.client.from("usuarios").select(SELECT).order("nombre");
     if (error) throw new Error(`[usuarios] findAll: ${error.message}`);
-    return (data as unknown as UsuarioQueryRow[]).map((r) => this.mapRow(r));
+    const filas = data as unknown as UsuarioQueryRow[];
+    const nombres = await this.resolverNombresSupervisores(filas.map((f) => f.supervisor_id));
+    return filas.map((r) => this.mapRow(r, r.supervisor_id ? (nombres.get(r.supervisor_id) ?? null) : null));
   }
 
   async findById(id: string): Promise<Usuario | null> {
@@ -64,7 +84,10 @@ export class UsuarioRepository {
       .eq("id", id)
       .maybeSingle();
     if (error) throw new Error(`[usuarios] findById: ${error.message}`);
-    return data ? this.mapRow(data as unknown as UsuarioQueryRow) : null;
+    if (!data) return null;
+    const row = data as unknown as UsuarioQueryRow;
+    const nombres = await this.resolverNombresSupervisores([row.supervisor_id]);
+    return this.mapRow(row, row.supervisor_id ? (nombres.get(row.supervisor_id) ?? null) : null);
   }
 
   async findByCorreo(correo: string): Promise<Usuario | null> {
@@ -74,7 +97,10 @@ export class UsuarioRepository {
       .eq("correo", correo)
       .maybeSingle();
     if (error) throw new Error(`[usuarios] findByCorreo: ${error.message}`);
-    return data ? this.mapRow(data as unknown as UsuarioQueryRow) : null;
+    if (!data) return null;
+    const row = data as unknown as UsuarioQueryRow;
+    const nombres = await this.resolverNombresSupervisores([row.supervisor_id]);
+    return this.mapRow(row, row.supervisor_id ? (nombres.get(row.supervisor_id) ?? null) : null);
   }
 
   /** Actualiza los datos de perfil (no roles/permisos, que se gestionan aparte). */
