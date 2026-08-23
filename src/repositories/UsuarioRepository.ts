@@ -6,6 +6,7 @@ import type { RoleCode } from "@/domain/enums";
 interface UsuarioQueryRow extends UsuarioRow {
   area?: { nombre: string } | null;
   ciudad_operacion?: { nombre: string } | null;
+  supervisor?: { nombre: string } | null;
   usuario_roles: { rol_code: RoleCode }[];
   // Forma real de la fila que devuelve `SELECT` (columna `modulo_code`, no
   // `modulo`): se tipa aparte de `PermisoRow` a propósito, para que un typo
@@ -16,7 +17,7 @@ interface UsuarioQueryRow extends UsuarioRow {
 }
 
 const SELECT =
-  "*, area:areas(nombre), ciudad_operacion:ciudades_operacion(nombre), usuario_roles(rol_code), usuario_permisos(modulo_code, crear, leer, actualizar, eliminar)";
+  "*, area:areas(nombre), ciudad_operacion:ciudades_operacion(nombre), supervisor:usuarios!usuarios_supervisor_id_fkey(nombre), usuario_roles(rol_code), usuario_permisos(modulo_code, crear, leer, actualizar, eliminar)";
 
 /**
  * Repositorio de usuarios. No hereda de `BaseRepository` porque la entidad
@@ -43,6 +44,7 @@ export class UsuarioRepository {
         ...row,
         area_nombre: row.area?.nombre ?? null,
         ciudad_operacion_nombre: row.ciudad_operacion?.nombre ?? null,
+        supervisor_nombre: row.supervisor?.nombre ?? null,
         roles,
       },
       permisos,
@@ -78,7 +80,7 @@ export class UsuarioRepository {
   /** Actualiza los datos de perfil (no roles/permisos, que se gestionan aparte). */
   async actualizarPerfil(
     id: string,
-    cambios: Partial<Pick<UsuarioRow, "nombre" | "area_id" | "ciudad_operacion_id" | "foto_url" | "activo">>,
+    cambios: Partial<Pick<UsuarioRow, "nombre" | "area_id" | "ciudad_operacion_id" | "supervisor_id" | "foto_url" | "activo">>,
   ): Promise<void> {
     const { error } = await this.client.from("usuarios").update(cambios).eq("id", id);
     if (error) throw new Error(`[usuarios] actualizarPerfil: ${error.message}`);

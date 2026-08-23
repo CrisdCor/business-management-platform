@@ -24,16 +24,17 @@ export class CompraService {
   }
 
   /**
-   * Registra la compra (OC) a partir de ítems de una requisición ya
-   * aprobada. La RPC `registrar_compra_oc` valida pertenencia/disponibilidad
-   * de cada ítem y el presupuesto por rubro; si algún rubro excede el
+   * Registra la compra (OC) a partir de ítems pendientes de una o varias
+   * requisiciones ya aprobadas (siempre que compartan área y ciudad de
+   * operación) -- cada ítem puede pedir menos de lo pendiente (compra
+   * parcial). La RPC `registrar_compra_oc` valida saldo/disponibilidad de
+   * cada ítem y el presupuesto por rubro; si algún rubro excede el
    * disponible, la compra queda en `pendiente_aprobacion_exceso` hasta que
    * el Superadministrador la apruebe con `aprobarExceso`.
    */
   async registrar(input: {
-    requisicionId: string;
     proveedorId: string;
-    items: { requisicionItemId: string; precioUnitario: number }[];
+    items: { requisicionItemId: string; cantidad: number; precioUnitario: number }[];
     fechaEntregaEstimada: string | null;
     notas: string | null;
   }): Promise<Compra> {

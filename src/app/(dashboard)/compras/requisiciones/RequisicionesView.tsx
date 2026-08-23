@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Check, X as XIcon, Clock, Trash2, Eye } from "lucide-react";
+import { Plus, Check, X as XIcon, Clock, Trash2, Eye, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/utils";
 import { ESTADO_REQUISICION } from "@/domain/enums";
 import {
   crearRequisicionAction,
+  editarRequisicionAction,
   aprobarRequisicionAction,
   rechazarRequisicionAction,
 } from "@/app/actions/requisiciones";
@@ -61,6 +62,7 @@ export function RequisicionesView({
   const [busqueda, setBusqueda] = React.useState("");
   const [filtroEstado, setFiltroEstado] = React.useState<string>("");
   const [modalCrear, setModalCrear] = React.useState(false);
+  const [editar, setEditar] = React.useState<RequisicionVM | null>(null);
   const [rechazar, setRechazar] = React.useState<RequisicionVM | null>(null);
   const [verItems, setVerItems] = React.useState<RequisicionVM | null>(null);
 
@@ -166,16 +168,23 @@ export function RequisicionesView({
                 </TableCell>
                 <TableCell>{r.solicitanteNombre}</TableCell>
                 <TableCell className="text-right">
-                  {r.estado === ESTADO_REQUISICION.PENDIENTE && (
-                    <div className="flex justify-end gap-1.5">
-                      {permisos.puedeAprobar && <AprobarBoton id={r.id} />}
-                      {permisos.puedeRechazar && (
-                        <Button variant="outline" size="sm" onClick={() => setRechazar(r)}>
-                          <XIcon className="size-3.5" /> Rechazar
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex justify-end gap-1.5">
+                    {r.puedeEditar && (
+                      <Button variant="outline" size="sm" onClick={() => setEditar(r)}>
+                        <Pencil className="size-3.5" /> Editar
+                      </Button>
+                    )}
+                    {r.estado === ESTADO_REQUISICION.PENDIENTE && (
+                      <>
+                        {r.puedeAprobar && <AprobarBoton id={r.id} />}
+                        {permisos.puedeRechazar && (
+                          <Button variant="outline" size="sm" onClick={() => setRechazar(r)}>
+                            <XIcon className="size-3.5" /> Rechazar
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -183,11 +192,18 @@ export function RequisicionesView({
         </Table>
       )}
 
-      <ModalCrearRequisicion
+      <ModalRequisicion
         open={modalCrear}
         onClose={() => setModalCrear(false)}
         productos={productos}
         solicitante={solicitante}
+      />
+      <ModalRequisicion
+        open={!!editar}
+        onClose={() => setEditar(null)}
+        productos={productos}
+        solicitante={solicitante}
+        requisicion={editar}
       />
       <ModalRechazar requisicion={rechazar} onClose={() => setRechazar(null)} />
       <ModalVerItems requisicion={verItems} onClose={() => setVerItems(null)} />
@@ -232,25 +248,36 @@ function ModalVerItems({ requisicion, onClose }: { requisicion: RequisicionVM | 
                 <TableHead>Rubro</TableHead>
                 <TableHead>Cantidad</TableHead>
                 <TableHead>Observación</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Comprado</TableHead>
+                <TableHead>Anulado</TableHead>
+                <TableHead>Pendiente</TableHead>
               </tr>
             </TableHeader>
             <TableBody>
-              {requisicion.items.map((it) => (
-                <TableRow key={it.id}>
-                  <TableCell>{it.productoNombre}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{it.rubroNombre}</TableCell>
-                  <TableCell>
-                    {it.cantidad} {it.unidadMedidaAbreviatura ?? it.unidadMedidaNombre}
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                    {it.observacion ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={it.comprado ? "success" : "neutral"}>{it.comprado ? "Comprado" : "Pendiente"}</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {requisicion.items.map((it) => {
+                const unidad = it.unidadMedidaAbreviatura ?? it.unidadMedidaNombre;
+                return (
+                  <TableRow key={it.id}>
+                    <TableCell>{it.productoNombre}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{it.rubroNombre}</TableCell>
+                    <TableCell>
+                      {it.cantidad} {unidad}
+                    </TableCell>
+                    <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground">
+                      {it.observacion ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-xs">{it.cantidadComprada} {unidad}</TableCell>
+                    <TableCell className="text-xs" title={it.motivoAnulacion ?? undefined}>
+                      {it.cantidadAnulada} {unidad}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={it.cantidadPendiente > 0 ? "neutral" : "success"}>
+                        {it.cantidadPendiente} {unidad}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -320,22 +347,48 @@ function nuevaFila(): FilaItem {
   return { key: contadorFila, productoId: "", cantidad: "", observacion: "" };
 }
 
-function ModalCrearRequisicion({
+function filaDesdeItem(it: RequisicionVM["items"][number]): FilaItem {
+  contadorFila += 1;
+  return {
+    key: contadorFila,
+    productoId: it.productoId,
+    cantidad: String(it.cantidad),
+    observacion: it.observacion ?? "",
+  };
+}
+
+function ModalRequisicion({
   open,
   onClose,
   productos,
   solicitante,
+  requisicion = null,
 }: {
   open: boolean;
   onClose: () => void;
   productos: ProductoOpcionVM[];
   solicitante: SolicitanteVM;
+  requisicion?: RequisicionVM | null;
 }) {
-  const [descripcion, setDescripcion] = React.useState("");
-  const [filas, setFilas] = React.useState<FilaItem[]>([nuevaFila()]);
+  const editando = !!requisicion;
+  const [descripcion, setDescripcion] = React.useState(requisicion?.descripcion ?? "");
+  const [filas, setFilas] = React.useState<FilaItem[]>(
+    requisicion && requisicion.items.length > 0 ? requisicion.items.map(filaDesdeItem) : [nuevaFila()],
+  );
   const [error, setError] = React.useState<string | null>(null);
   const [cargando, setCargando] = React.useState(false);
   const { notificar } = useToast();
+
+  React.useEffect(() => {
+    // El formulario permanece montado durante la animación de salida del SlideOver;
+    // se reinicia explícitamente según el registro en edición al abrir, en vez de usar `key`.
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDescripcion(requisicion?.descripcion ?? "");
+    setFilas(requisicion && requisicion.items.length > 0 ? requisicion.items.map(filaDesdeItem) : [nuevaFila()]);
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, requisicion?.id]);
 
   function limpiar() {
     setDescripcion("");
@@ -370,20 +423,22 @@ function ModalCrearRequisicion({
     }
 
     setCargando(true);
-    const resultado = await crearRequisicionAction({
-      descripcion: descripcion.trim() || null,
-      items: items.map((f) => ({
-        productoId: f.productoId,
-        cantidad: Number(f.cantidad),
-        observacion: f.observacion.trim() || null,
-      })),
-    });
+    const itemsInput = items.map((f) => ({
+      productoId: f.productoId,
+      cantidad: Number(f.cantidad),
+      observacion: f.observacion.trim() || null,
+    }));
+    const resultado = editando
+      ? await editarRequisicionAction(requisicion!.id, { descripcion: descripcion.trim() || null, items: itemsInput })
+      : await crearRequisicionAction({ descripcion: descripcion.trim() || null, items: itemsInput });
     setCargando(false);
 
-    if (!resultado.ok) return setError(resultado.error ?? "No se pudo crear la requisición.");
+    if (!resultado.ok) {
+      return setError(resultado.error ?? (editando ? "No se pudo editar la requisición." : "No se pudo crear la requisición."));
+    }
 
-    notificar({ titulo: "Requisición creada", tono: "success" });
-    limpiar();
+    notificar({ titulo: editando ? "Requisición actualizada" : "Requisición creada", tono: "success" });
+    if (!editando) limpiar();
     onClose();
   }
 
@@ -391,16 +446,20 @@ function ModalCrearRequisicion({
     <SlideOver
       open={open}
       onClose={onClose}
-      title="Nueva requisición"
-      description="Se enviará a aprobación según tu rol."
-      width="lg"
+      title={editando ? `Editar ${requisicion?.folio ?? ""}` : "Nueva requisición"}
+      description={editando ? "Solo se puede editar mientras siga pendiente de aprobación." : "Se enviará a aprobación según tu rol."}
+      width="xl"
       footer={
-        <Button type="submit" form="form-requisicion" loading={cargando}>
-          Crear requisición
+        <Button type="submit" form={editando ? "form-editar-requisicion" : "form-crear-requisicion"} loading={cargando}>
+          {editando ? "Guardar cambios" : "Crear requisición"}
         </Button>
       }
     >
-      <form id="form-requisicion" onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form
+        id={editando ? "form-editar-requisicion" : "form-crear-requisicion"}
+        onSubmit={onSubmit}
+        className="flex flex-col gap-4"
+      >
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Área</Label>

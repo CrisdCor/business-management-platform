@@ -10,7 +10,10 @@ export interface RequisicionItemVM {
   unidadMedidaAbreviatura: string | null;
   cantidad: number;
   observacion: string | null;
-  comprado: boolean;
+  cantidadComprada: number;
+  cantidadAnulada: number;
+  cantidadPendiente: number;
+  motivoAnulacion: string | null;
 }
 
 export interface RequisicionVM {
@@ -20,6 +23,7 @@ export interface RequisicionVM {
   ciudadOperacionNombre: string;
   descripcion: string | null;
   estado: EstadoRequisicion;
+  solicitanteId: string;
   solicitanteNombre: string;
   aprobadorNombre: string | null;
   motivoRechazo: string | null;
@@ -27,6 +31,8 @@ export interface RequisicionVM {
   diasRestantesParaComprar: number | null;
   plazoVencido: boolean;
   estadoSemaforo: EstadoSemaforo;
+  puedeEditar: boolean;
+  puedeAprobar: boolean;
   items: RequisicionItemVM[];
   createdAt: string;
 }
@@ -46,7 +52,6 @@ export interface ProductoOpcionVM {
 
 export interface PermisosRequisicionesVM {
   puedeCrear: boolean;
-  puedeAprobar: boolean;
   puedeRechazar: boolean;
 }
 

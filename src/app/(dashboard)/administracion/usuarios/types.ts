@@ -9,6 +9,8 @@ export interface UsuarioVM {
   areaNombre: string | null;
   ciudadOperacionId: string | null;
   ciudadOperacionNombre: string | null;
+  supervisorId: string | null;
+  supervisorNombre: string | null;
   roles: RoleCode[];
   activo: boolean;
   fotoUrl: string | null;

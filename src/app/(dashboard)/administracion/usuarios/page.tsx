@@ -34,6 +34,8 @@ export default async function UsuariosPage() {
     areaNombre: u.areaNombre,
     ciudadOperacionId: u.ciudadOperacionId,
     ciudadOperacionNombre: u.ciudadOperacionNombre,
+    supervisorId: u.supervisorId,
+    supervisorNombre: u.supervisorNombre,
     roles: u.permisos.getRoles(),
     activo: u.activo,
     fotoUrl: u.fotoUrl,
