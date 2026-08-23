@@ -6,9 +6,8 @@ import { CompraService } from "@/services/CompraService";
 import type { AccionResultado } from "@/app/actions/auth";
 
 export async function registrarCompraAction(input: {
-  requisicionId: string;
   proveedorId: string;
-  items: { requisicionItemId: string; precioUnitario: number }[];
+  items: { requisicionItemId: string; cantidad: number; precioUnitario: number }[];
   fechaEntregaEstimada: string | null;
   notas: string | null;
 }): Promise<AccionResultado> {

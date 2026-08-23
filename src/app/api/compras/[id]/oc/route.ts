@@ -15,14 +15,22 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const compra = await new CompraService(supabase).obtener(id);
   if (!compra) return NextResponse.json({ error: "Compra no encontrada" }, { status: 404 });
 
-  const [requisicion, proveedor] = await Promise.all([
-    new RequisicionService(supabase).obtener(compra.requisicionId),
+  const requisicionIds = Array.from(new Set(compra.items.map((it) => it.requisicion_id).filter((v): v is string => !!v)));
+  const requisicionSvc = new RequisicionService(supabase);
+
+  const [requisiciones, proveedor] = await Promise.all([
+    Promise.all(requisicionIds.map((reqId) => requisicionSvc.obtener(reqId))),
     new ProveedorRepository(supabase).findById(compra.proveedorId),
   ]);
 
-  if (!requisicion || !proveedor) {
+  const requisicionesEncontradas = requisiciones.filter((r): r is NonNullable<typeof r> => r !== null);
+  if (requisicionesEncontradas.length === 0 || !proveedor) {
     return NextResponse.json({ error: "Datos incompletos para generar la OC" }, { status: 404 });
   }
+
+  // Todos los ítems de una compra comparten área/ciudad de operación por
+  // construcción (lo valida `registrar_compra_oc`) -- se toma de la primera.
+  const [primera] = requisicionesEncontradas;
 
   const stream = await renderToStream(
     OrdenCompraDocument({
@@ -32,13 +40,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         montoTotal: compra.montoTotal,
         notas: compra.notas,
         fechaEntregaEstimada: compra.fechaEntregaEstimada?.toISOString() ?? null,
-        requisicion: {
-          folio: requisicion.folio,
-          descripcion: requisicion.descripcion,
-          areaNombre: requisicion.areaNombre ?? "—",
-          ciudadOperacionNombre: requisicion.ciudadOperacionNombre ?? "—",
-          solicitanteNombre: requisicion.solicitanteNombre ?? "—",
-        },
+        areaNombre: primera.areaNombre ?? "—",
+        ciudadOperacionNombre: primera.ciudadOperacionNombre ?? "—",
+        requisiciones: requisicionesEncontradas.map((r) => ({
+          folio: r.folio,
+          descripcion: r.descripcion,
+          solicitanteNombre: r.solicitanteNombre ?? "—",
+        })),
         proveedor: {
           nombre: proveedor.nombre,
           nitCedula: proveedor.nitCedula,
@@ -47,8 +55,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
           numeroCuenta: proveedor.numeroCuenta,
         },
         items: compra.items.map((it) => ({
+          requisicionFolio: it.requisicion_folio ?? "—",
           productoNombre: it.producto_nombre ?? "—",
-          cantidad: it.cantidad ?? 0,
+          cantidad: it.cantidad,
           unidadMedida: it.unidad_medida_abreviatura ?? it.unidad_medida_nombre ?? "",
           precioUnitario: it.precio_unitario,
           observacion: it.observacion ?? null,

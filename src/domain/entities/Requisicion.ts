@@ -13,7 +13,10 @@ export interface RequisicionItemRow {
   unidad_medida_abreviatura?: string | null;
   cantidad: number;
   observacion: string | null;
-  comprado: boolean;
+  cantidad_comprada: number;
+  cantidad_anulada: number;
+  cantidad_pendiente: number;
+  motivo_anulacion: string | null;
 }
 
 export type EstadoSemaforo = "verde" | "amarillo" | "rojo" | null;
@@ -27,6 +30,7 @@ export interface RequisicionRow {
   ciudad_operacion_nombre?: string | null;
   solicitante_id: string;
   solicitante_nombre?: string | null;
+  solicitante_supervisor_id?: string | null;
   descripcion: string | null;
   estado: EstadoRequisicion;
   aprobador_id: string | null;
@@ -54,6 +58,7 @@ export class Requisicion extends Entity<RequisicionRow> {
     public readonly ciudadOperacionNombre: string | null,
     public readonly solicitanteId: string,
     public readonly solicitanteNombre: string | null,
+    public readonly solicitanteSupervisorId: string | null,
     public readonly descripcion: string | null,
     public readonly estado: EstadoRequisicion,
     public readonly aprobadorId: string | null,
@@ -77,6 +82,7 @@ export class Requisicion extends Entity<RequisicionRow> {
       row.ciudad_operacion_nombre ?? null,
       row.solicitante_id,
       row.solicitante_nombre ?? null,
+      row.solicitante_supervisor_id ?? null,
       row.descripcion,
       row.estado,
       row.aprobador_id,
@@ -95,6 +101,22 @@ export class Requisicion extends Entity<RequisicionRow> {
 
   public get estaAprobada(): boolean {
     return this.estado === ESTADO_REQUISICION.APROBADA;
+  }
+
+  /** Solo el dueño (o el Superadministrador) puede editar, y solo mientras siga 'pendiente' -- sin reversión posible tras aprobarse. */
+  public puedeEditar(usuarioId: string, esSuperadmin: boolean): boolean {
+    return this.estaPendiente && (this.solicitanteId === usuarioId || esSuperadmin);
+  }
+
+  /**
+   * Solo el Superadministrador, o el supervisor asignado exactamente a este
+   * solicitante (organigrama persona-a-persona, no el rol "supervisor" en
+   * general), y solo mientras siga 'pendiente'.
+   */
+  public puedeAprobar(usuarioId: string, esSuperadmin: boolean, esSupervisor: boolean): boolean {
+    if (!this.estaPendiente) return false;
+    if (esSuperadmin) return true;
+    return esSupervisor && this.solicitanteSupervisorId !== null && this.solicitanteSupervisorId === usuarioId;
   }
 
   /** Fecha límite para que el área administrativa gestione la compra tras la aprobación. */
@@ -142,6 +164,7 @@ export class Requisicion extends Entity<RequisicionRow> {
       ciudad_operacion_nombre: this.ciudadOperacionNombre,
       solicitante_id: this.solicitanteId,
       solicitante_nombre: this.solicitanteNombre,
+      solicitante_supervisor_id: this.solicitanteSupervisorId,
       descripcion: this.descripcion,
       estado: this.estado,
       aprobador_id: this.aprobadorId,

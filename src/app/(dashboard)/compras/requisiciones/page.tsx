@@ -31,6 +31,9 @@ export default async function RequisicionesPage() {
     catalogoSvc.listarProductos(),
   ]);
 
+  const esSuperadmin = usuario.permisos.esSuperadministrador();
+  const esSupervisor = usuario.permisos.esSupervisor();
+
   const vm: RequisicionVM[] = requisiciones.map((r) => ({
     id: r.id,
     folio: r.folio,
@@ -38,6 +41,7 @@ export default async function RequisicionesPage() {
     ciudadOperacionNombre: r.ciudadOperacionNombre ?? "—",
     descripcion: r.descripcion,
     estado: r.estado,
+    solicitanteId: r.solicitanteId,
     solicitanteNombre: r.solicitanteNombre ?? "—",
     aprobadorNombre: r.aprobadorNombre,
     motivoRechazo: r.motivoRechazo,
@@ -45,6 +49,8 @@ export default async function RequisicionesPage() {
     diasRestantesParaComprar: r.diasRestantesParaComprar,
     plazoVencido: r.plazoVencido,
     estadoSemaforo: r.estadoSemaforo,
+    puedeEditar: r.puedeEditar(usuario.id, esSuperadmin),
+    puedeAprobar: r.puedeAprobar(usuario.id, esSuperadmin, esSupervisor),
     items: r.items.map((it) => ({
       id: it.id,
       productoId: it.producto_id,
@@ -54,7 +60,10 @@ export default async function RequisicionesPage() {
       unidadMedidaAbreviatura: it.unidad_medida_abreviatura ?? null,
       cantidad: it.cantidad,
       observacion: it.observacion,
-      comprado: it.comprado,
+      cantidadComprada: it.cantidad_comprada,
+      cantidadAnulada: it.cantidad_anulada,
+      cantidadPendiente: it.cantidad_pendiente,
+      motivoAnulacion: it.motivo_anulacion,
     })),
     createdAt: r.createdAt.toISOString(),
   }));
@@ -76,8 +85,7 @@ export default async function RequisicionesPage() {
 
   const permisos: PermisosRequisicionesVM = {
     puedeCrear: usuario.permisos.puedeCrear(MODULOS.COMPRAS_REQUISICIONES),
-    puedeAprobar: usuario.permisos.esSupervisor() || usuario.permisos.esSuperadministrador(),
-    puedeRechazar: usuario.permisos.esSuperadministrador(),
+    puedeRechazar: esSuperadmin,
   };
 
   return (

@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export interface OrdenCompraItemData {
+  requisicionFolio: string;
   productoNombre: string;
   cantidad: number;
   unidadMedida: string;
@@ -15,13 +16,13 @@ export interface OrdenCompraData {
   montoTotal: number;
   notas: string | null;
   fechaEntregaEstimada: string | null;
-  requisicion: {
+  areaNombre: string;
+  ciudadOperacionNombre: string;
+  requisiciones: {
     folio: string;
     descripcion: string | null;
-    areaNombre: string;
-    ciudadOperacionNombre: string;
     solicitanteNombre: string;
-  };
+  }[];
   proveedor: {
     nombre: string;
     nitCedula: string;
@@ -46,7 +47,8 @@ const styles = StyleSheet.create({
   table: { marginTop: 4 },
   tableHeaderRow: { flexDirection: "row", borderBottom: "1px solid #d4d4d4", paddingBottom: 4, marginBottom: 4 },
   tableRow: { flexDirection: "row", paddingVertical: 3, borderBottom: "1px solid #f0f0f0" },
-  colProducto: { flex: 3 },
+  colFolio: { flex: 1 },
+  colProducto: { flex: 2.4 },
   colCantidad: { flex: 1.2, textAlign: "right" },
   colPrecio: { flex: 1.5, textAlign: "right" },
   colSubtotal: { flex: 1.5, textAlign: "right" },
@@ -76,29 +78,35 @@ export function OrdenCompraDocument({ data }: { data: OrdenCompraData }) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Requisición de origen</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Folio</Text>
-            <Text style={styles.value}>{data.requisicion.folio}</Text>
-          </View>
+          <Text style={styles.sectionTitle}>
+            {data.requisiciones.length > 1 ? "Requisiciones de origen" : "Requisición de origen"}
+          </Text>
           <View style={styles.row}>
             <Text style={styles.label}>Área</Text>
-            <Text style={styles.value}>{data.requisicion.areaNombre}</Text>
+            <Text style={styles.value}>{data.areaNombre}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Ciudad de operación</Text>
-            <Text style={styles.value}>{data.requisicion.ciudadOperacionNombre}</Text>
+            <Text style={styles.value}>{data.ciudadOperacionNombre}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Solicitante</Text>
-            <Text style={styles.value}>{data.requisicion.solicitanteNombre}</Text>
-          </View>
-          {data.requisicion.descripcion && (
-            <View style={styles.row}>
-              <Text style={styles.label}>Descripción</Text>
-              <Text style={styles.value}>{data.requisicion.descripcion}</Text>
+          {data.requisiciones.map((r, idx) => (
+            <View key={idx} style={{ marginTop: idx > 0 ? 6 : 0 }}>
+              <View style={styles.row}>
+                <Text style={styles.label}>Folio</Text>
+                <Text style={styles.value}>{r.folio}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Solicitante</Text>
+                <Text style={styles.value}>{r.solicitanteNombre}</Text>
+              </View>
+              {r.descripcion && (
+                <View style={styles.row}>
+                  <Text style={styles.label}>Descripción</Text>
+                  <Text style={styles.value}>{r.descripcion}</Text>
+                </View>
+              )}
             </View>
-          )}
+          ))}
         </View>
 
         <View style={styles.section}>
@@ -127,6 +135,7 @@ export function OrdenCompraDocument({ data }: { data: OrdenCompraData }) {
           <Text style={styles.sectionTitle}>Ítems</Text>
           <View style={styles.table}>
             <View style={styles.tableHeaderRow}>
+              <Text style={[styles.colFolio, styles.tableHeaderText]}>Folio</Text>
               <Text style={[styles.colProducto, styles.tableHeaderText]}>Producto</Text>
               <Text style={[styles.colCantidad, styles.tableHeaderText]}>Cantidad</Text>
               <Text style={[styles.colPrecio, styles.tableHeaderText]}>Precio unitario</Text>
@@ -134,6 +143,7 @@ export function OrdenCompraDocument({ data }: { data: OrdenCompraData }) {
             </View>
             {data.items.map((item, idx) => (
               <View key={idx} style={styles.tableRow}>
+                <Text style={styles.colFolio}>{item.requisicionFolio}</Text>
                 <View style={styles.colProducto}>
                   <Text>{item.productoNombre}</Text>
                   {item.observacion && <Text style={{ fontSize: 8, color: "#a3a3a3" }}>{item.observacion}</Text>}

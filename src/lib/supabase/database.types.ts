@@ -66,6 +66,7 @@ export type Database = {
       }
       compra_items: {
         Row: {
+          cantidad: number
           compra_id: string
           created_at: string
           id: string
@@ -73,6 +74,7 @@ export type Database = {
           requisicion_item_id: string
         }
         Insert: {
+          cantidad: number
           compra_id: string
           created_at?: string
           id?: string
@@ -80,6 +82,7 @@ export type Database = {
           requisicion_item_id: string
         }
         Update: {
+          cantidad?: number
           compra_id?: string
           created_at?: string
           id?: string
@@ -97,7 +100,7 @@ export type Database = {
           {
             foreignKeyName: "compra_items_requisicion_item_id_fkey"
             columns: ["requisicion_item_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "requisicion_items"
             referencedColumns: ["id"]
           },
@@ -117,7 +120,6 @@ export type Database = {
           monto_total: number
           notas: string | null
           proveedor_id: string
-          requisicion_id: string
           updated_at: string
         }
         Insert: {
@@ -133,7 +135,6 @@ export type Database = {
           monto_total?: number
           notas?: string | null
           proveedor_id: string
-          requisicion_id: string
           updated_at?: string
         }
         Update: {
@@ -149,7 +150,6 @@ export type Database = {
           monto_total?: number
           notas?: string | null
           proveedor_id?: string
-          requisicion_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -165,13 +165,6 @@ export type Database = {
             columns: ["proveedor_id"]
             isOneToOne: false
             referencedRelation: "proveedores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "compras_requisicion_id_fkey"
-            columns: ["requisicion_id"]
-            isOneToOne: false
-            referencedRelation: "requisiciones"
             referencedColumns: ["id"]
           },
         ]
@@ -367,9 +360,12 @@ export type Database = {
       requisicion_items: {
         Row: {
           cantidad: number
-          comprado: boolean
+          cantidad_anulada: number
+          cantidad_comprada: number
+          cantidad_pendiente: number | null
           created_at: string
           id: string
+          motivo_anulacion: string | null
           observacion: string | null
           producto_id: string
           requisicion_id: string
@@ -379,9 +375,12 @@ export type Database = {
         }
         Insert: {
           cantidad: number
-          comprado?: boolean
+          cantidad_anulada?: number
+          cantidad_comprada?: number
+          cantidad_pendiente?: number | null
           created_at?: string
           id?: string
+          motivo_anulacion?: string | null
           observacion?: string | null
           producto_id: string
           requisicion_id: string
@@ -391,9 +390,12 @@ export type Database = {
         }
         Update: {
           cantidad?: number
-          comprado?: boolean
+          cantidad_anulada?: number
+          cantidad_comprada?: number
+          cantidad_pendiente?: number | null
           created_at?: string
           id?: string
+          motivo_anulacion?: string | null
           observacion?: string | null
           producto_id?: string
           requisicion_id?: string
@@ -657,6 +659,7 @@ export type Database = {
           foto_url: string | null
           id: string
           nombre: string
+          supervisor_id: string | null
           updated_at: string
         }
         Insert: {
@@ -668,6 +671,7 @@ export type Database = {
           foto_url?: string | null
           id: string
           nombre: string
+          supervisor_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -679,6 +683,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nombre?: string
+          supervisor_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -696,6 +701,13 @@ export type Database = {
             referencedRelation: "ciudades_operacion"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "usuarios_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -703,6 +715,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      actualizar_estado_requisicion: {
+        Args: { p_requisicion_id: string }
+        Returns: undefined
+      }
+      anular_saldo_requisicion_item: {
+        Args: { p_motivo: string; p_requisicion_item_id: string }
+        Returns: undefined
+      }
       aprobar_exceso_compra_oc: {
         Args: { p_compra_id: string }
         Returns: undefined
@@ -712,6 +732,10 @@ export type Database = {
         Args: { p_descripcion?: string; p_items: Json }
         Returns: string
       }
+      editar_requisicion: {
+        Args: { p_descripcion?: string; p_id: string; p_items: Json }
+        Returns: undefined
+      }
       eliminar_usuario_definitivo: {
         Args: { p_usuario_id: string }
         Returns: undefined
@@ -720,6 +744,10 @@ export type Database = {
       is_superadmin: { Args: never; Returns: boolean }
       permiso: {
         Args: { p_accion: string; p_modulo: string }
+        Returns: boolean
+      }
+      puede_ver_requisicion: {
+        Args: { p_solicitante_id: string }
         Returns: boolean
       }
       rechazar_requisicion: {
@@ -736,7 +764,6 @@ export type Database = {
           p_items: Json
           p_notas?: string
           p_proveedor_id: string
-          p_requisicion_id: string
         }
         Returns: string
       }

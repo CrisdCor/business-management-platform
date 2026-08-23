@@ -29,6 +29,7 @@ export class UsuarioService {
     correo: string;
     areaId: string | null;
     ciudadOperacionId: string | null;
+    supervisorId: string | null;
     roles: RoleCode[];
     permisos: PermisoRow[];
     passwordTemporal: string;
@@ -39,6 +40,7 @@ export class UsuarioService {
       passwordTemporal: input.passwordTemporal,
       areaId: input.areaId,
       ciudadOperacionId: input.ciudadOperacionId,
+      supervisorId: input.supervisorId,
     });
 
     await this.usuarios.reemplazarRoles(usuarioId, input.roles);
@@ -53,6 +55,7 @@ export class UsuarioService {
       nombre?: string;
       areaId?: string | null;
       ciudadOperacionId?: string | null;
+      supervisorId?: string | null;
       fotoUrl?: string | null;
       activo?: boolean;
     },
@@ -61,6 +64,7 @@ export class UsuarioService {
       ...(cambios.nombre !== undefined ? { nombre: cambios.nombre } : {}),
       ...(cambios.areaId !== undefined ? { area_id: cambios.areaId } : {}),
       ...(cambios.ciudadOperacionId !== undefined ? { ciudad_operacion_id: cambios.ciudadOperacionId } : {}),
+      ...(cambios.supervisorId !== undefined ? { supervisor_id: cambios.supervisorId } : {}),
       ...(cambios.fotoUrl !== undefined ? { foto_url: cambios.fotoUrl } : {}),
       ...(cambios.activo !== undefined ? { activo: cambios.activo } : {}),
     });

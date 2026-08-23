@@ -11,7 +11,10 @@ interface RequisicionItemQueryRow {
   unidad_medida_id: string;
   cantidad: number;
   observacion: string | null;
-  comprado: boolean;
+  cantidad_comprada: number;
+  cantidad_anulada: number;
+  cantidad_pendiente: number;
+  motivo_anulacion: string | null;
   producto?: { nombre: string } | null;
   rubro?: { nombre: string } | null;
   unidad_medida?: { nombre: string; abreviatura: string | null } | null;
@@ -20,7 +23,7 @@ interface RequisicionItemQueryRow {
 interface RequisicionQueryRow extends RequisicionRow {
   area?: { nombre: string } | null;
   ciudad_operacion?: { nombre: string } | null;
-  solicitante?: { nombre: string } | null;
+  solicitante?: { nombre: string; supervisor_id: string | null } | null;
   aprobador?: { nombre: string } | null;
   requisicion_items?: RequisicionItemQueryRow[];
 }
@@ -31,9 +34,55 @@ export interface RequisicionFiltros {
   solicitanteId?: string;
 }
 
+/** Ítem pendiente de compra (saldo > 0), aplanado con los datos de su requisición de origen -- usado por Compras para armar una OC cruzando varias requisiciones. */
+export interface ItemPendienteCompra {
+  id: string;
+  requisicionId: string;
+  requisicionFolio: string;
+  areaId: string;
+  areaNombre: string | null;
+  ciudadOperacionId: string | null;
+  ciudadOperacionNombre: string | null;
+  productoId: string;
+  productoNombre: string | null;
+  rubroId: string;
+  rubroNombre: string | null;
+  unidadMedidaId: string;
+  unidadMedidaNombre: string | null;
+  unidadMedidaAbreviatura: string | null;
+  cantidad: number;
+  cantidadComprada: number;
+  cantidadAnulada: number;
+  cantidadPendiente: number;
+  observacion: string | null;
+}
+
+interface ItemPendienteQueryRow {
+  id: string;
+  requisicion_id: string;
+  producto_id: string;
+  rubro_id: string;
+  unidad_medida_id: string;
+  cantidad: number;
+  cantidad_comprada: number;
+  cantidad_anulada: number;
+  cantidad_pendiente: number;
+  observacion: string | null;
+  producto?: { nombre: string } | null;
+  rubro?: { nombre: string } | null;
+  unidad_medida?: { nombre: string; abreviatura: string | null } | null;
+  requisicion?: {
+    folio: string;
+    area_id: string;
+    ciudad_operacion_id: string | null;
+    area?: { nombre: string } | null;
+    ciudad_operacion?: { nombre: string } | null;
+  } | null;
+}
+
 const SELECT_CON_RELACIONES =
   "*, area:areas(nombre), ciudad_operacion:ciudades_operacion(nombre), " +
-  "solicitante:usuarios!requisiciones_solicitante_id_fkey(nombre), aprobador:usuarios!requisiciones_aprobador_id_fkey(nombre), " +
+  "solicitante:usuarios!requisiciones_solicitante_id_fkey(nombre, supervisor_id), aprobador:usuarios!requisiciones_aprobador_id_fkey(nombre), " +
   "requisicion_items(*, producto:productos(nombre), rubro:rubros(nombre), unidad_medida:unidades_medida(nombre, abreviatura))";
 
 export class RequisicionRepository extends BaseRepository<Requisicion, RequisicionQueryRow> {
@@ -59,7 +108,10 @@ export class RequisicionRepository extends BaseRepository<Requisicion, Requisici
         unidad_medida_abreviatura: it.unidad_medida?.abreviatura ?? null,
         cantidad: Number(it.cantidad),
         observacion: it.observacion,
-        comprado: it.comprado,
+        cantidad_comprada: Number(it.cantidad_comprada),
+        cantidad_anulada: Number(it.cantidad_anulada),
+        cantidad_pendiente: Number(it.cantidad_pendiente),
+        motivo_anulacion: it.motivo_anulacion,
       })) ?? [];
 
     return Requisicion.desdeFila({
@@ -67,6 +119,7 @@ export class RequisicionRepository extends BaseRepository<Requisicion, Requisici
       area_nombre: row.area?.nombre ?? null,
       ciudad_operacion_nombre: row.ciudad_operacion?.nombre ?? null,
       solicitante_nombre: row.solicitante?.nombre ?? null,
+      solicitante_supervisor_id: row.solicitante?.supervisor_id ?? null,
       aprobador_nombre: row.aprobador?.nombre ?? null,
       items,
     });
@@ -126,5 +179,91 @@ export class RequisicionRepository extends BaseRepository<Requisicion, Requisici
     const actualizada = await this.findById(id);
     if (!actualizada) throw new Error("Requisición no encontrada tras rechazarla.");
     return actualizada;
+  }
+
+  /**
+   * Reemplaza descripción + el set completo de ítems de una requisición vía
+   * la RPC `editar_requisicion` (dueño o Superadministrador, solo mientras
+   * 'pendiente' -- la RPC vuelve a validar esto aunque la UI ya lo filtre).
+   */
+  async editarConItems(
+    id: string,
+    input: {
+      descripcion: string | null;
+      items: { productoId: string; cantidad: number; observacion: string | null }[];
+    },
+  ): Promise<Requisicion> {
+    const { error } = await this.client.rpc("editar_requisicion", {
+      p_id: id,
+      p_items: input.items.map((i) => ({
+        producto_id: i.productoId,
+        cantidad: i.cantidad,
+        observacion: i.observacion,
+      })),
+      p_descripcion: input.descripcion,
+    });
+    if (error) throw new Error(`[requisiciones] editar_requisicion: ${error.message}`);
+
+    const editada = await this.findById(id);
+    if (!editada) throw new Error("Requisición no encontrada tras editarla.");
+    return editada;
+  }
+
+  /**
+   * Anula (escribe como no comprado, con motivo obligatorio) TODO el saldo
+   * pendiente restante de un ítem vía la RPC `anular_saldo_requisicion_item`.
+   * Puede cerrar la requisición si era su último ítem con saldo pendiente.
+   */
+  async anularSaldoItem(requisicionItemId: string, motivo: string): Promise<void> {
+    const { error } = await this.client.rpc("anular_saldo_requisicion_item", {
+      p_requisicion_item_id: requisicionItemId,
+      p_motivo: motivo,
+    });
+    if (error) throw new Error(`[requisicion_items] anular_saldo_requisicion_item: ${error.message}`);
+  }
+
+  /**
+   * Ítems con saldo pendiente > 0 de requisiciones 'aprobada'/'en_compra',
+   * aplanados con los datos de su requisición de origen -- es la fuente de
+   * datos del módulo de Compras para armar una OC que puede cruzar varias
+   * requisiciones (misma área/ciudad). Consulta directa a `requisicion_items`
+   * (no vía `Requisicion.desdeFila`): el shape que necesita Compras es "un
+   * ítem con su origen", no "una requisición con sus ítems".
+   */
+  async listarItemsPendientesParaCompra(): Promise<ItemPendienteCompra[]> {
+    const { data, error } = await this.client
+      .from("requisicion_items")
+      .select(
+        "id, requisicion_id, producto_id, rubro_id, unidad_medida_id, cantidad, cantidad_comprada, cantidad_anulada, cantidad_pendiente, observacion, " +
+          "producto:productos(nombre), rubro:rubros(nombre), unidad_medida:unidades_medida(nombre, abreviatura), " +
+          "requisicion:requisiciones!inner(folio, area_id, ciudad_operacion_id, estado, area:areas(nombre), ciudad_operacion:ciudades_operacion(nombre))",
+      )
+      .gt("cantidad_pendiente", 0)
+      .in("requisicion.estado", ["aprobada", "en_compra"]);
+    if (error) throw new Error(`[requisicion_items] listarItemsPendientesParaCompra: ${error.message}`);
+
+    return (data as unknown as ItemPendienteQueryRow[])
+      .filter((r) => r.requisicion !== null && r.requisicion !== undefined)
+      .map((r) => ({
+        id: r.id,
+        requisicionId: r.requisicion_id,
+        requisicionFolio: r.requisicion!.folio,
+        areaId: r.requisicion!.area_id,
+        areaNombre: r.requisicion!.area?.nombre ?? null,
+        ciudadOperacionId: r.requisicion!.ciudad_operacion_id,
+        ciudadOperacionNombre: r.requisicion!.ciudad_operacion?.nombre ?? null,
+        productoId: r.producto_id,
+        productoNombre: r.producto?.nombre ?? null,
+        rubroId: r.rubro_id,
+        rubroNombre: r.rubro?.nombre ?? null,
+        unidadMedidaId: r.unidad_medida_id,
+        unidadMedidaNombre: r.unidad_medida?.nombre ?? null,
+        unidadMedidaAbreviatura: r.unidad_medida?.abreviatura ?? null,
+        cantidad: Number(r.cantidad),
+        cantidadComprada: Number(r.cantidad_comprada),
+        cantidadAnulada: Number(r.cantidad_anulada),
+        cantidadPendiente: Number(r.cantidad_pendiente),
+        observacion: r.observacion,
+      }));
   }
 }

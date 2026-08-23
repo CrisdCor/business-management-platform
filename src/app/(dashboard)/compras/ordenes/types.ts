@@ -3,6 +3,8 @@ import type { EstadoCompra } from "@/domain/enums";
 export interface CompraItemVM {
   id: string;
   requisicionItemId: string;
+  requisicionId: string;
+  requisicionFolio: string;
   productoNombre: string;
   unidadMedidaNombre: string;
   unidadMedidaAbreviatura: string | null;
@@ -14,9 +16,7 @@ export interface CompraItemVM {
 export interface CompraVM {
   id: string;
   folioOc: string;
-  requisicionId: string;
-  requisicionFolio: string;
-  requisicionDescripcion: string;
+  requisicionesFolios: string[];
   proveedorNombre: string;
   montoTotal: number;
   excedePresupuesto: boolean;
@@ -28,23 +28,21 @@ export interface CompraVM {
   items: CompraItemVM[];
 }
 
-export interface ItemPendienteVM {
+/** Ítem con saldo pendiente (de cualquier requisición aprobada/en_compra), aplanado con los datos de su requisición de origen para armar una OC que puede cruzar varias requisiciones (misma área/ciudad). */
+export interface ItemPendienteCompraVM {
   id: string;
+  requisicionId: string;
+  requisicionFolio: string;
+  areaId: string;
+  areaNombre: string;
+  ciudadOperacionId: string | null;
+  ciudadOperacionNombre: string;
   productoNombre: string;
   rubroNombre: string;
   unidadMedidaNombre: string;
   unidadMedidaAbreviatura: string | null;
-  cantidad: number;
+  cantidadPendiente: number;
   observacion: string | null;
-}
-
-export interface RequisicionDisponibleVM {
-  id: string;
-  folio: string;
-  descripcion: string | null;
-  areaNombre: string;
-  ciudadOperacionNombre: string;
-  itemsPendientes: ItemPendienteVM[];
 }
 
 export interface ProveedorOpcionVM {

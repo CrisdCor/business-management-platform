@@ -8,11 +8,12 @@ interface CompraItemQueryRow {
   compra_id: string;
   requisicion_item_id: string;
   precio_unitario: number;
+  cantidad: number;
   requisicion_item?: {
-    cantidad: number;
     observacion: string | null;
     producto?: { nombre: string } | null;
     unidad_medida?: { nombre: string; abreviatura: string | null } | null;
+    requisicion?: { id: string; folio: string } | null;
   } | null;
 }
 
@@ -27,7 +28,7 @@ export interface CompraFiltros {
 
 const SELECT_CON_RELACIONES =
   "*, proveedor:proveedores(nombre), " +
-  "compra_items(*, requisicion_item:requisicion_items(cantidad, observacion, producto:productos(nombre), unidad_medida:unidades_medida(nombre, abreviatura)))";
+  "compra_items(*, requisicion_item:requisicion_items(observacion, producto:productos(nombre), unidad_medida:unidades_medida(nombre, abreviatura), requisicion:requisiciones(id, folio)))";
 
 export class CompraRepository extends BaseRepository<Compra, CompraQueryRow> {
   constructor(client: SupabaseClient) {
@@ -45,11 +46,13 @@ export class CompraRepository extends BaseRepository<Compra, CompraQueryRow> {
         compra_id: it.compra_id,
         requisicion_item_id: it.requisicion_item_id,
         precio_unitario: Number(it.precio_unitario),
-        cantidad: it.requisicion_item?.cantidad != null ? Number(it.requisicion_item.cantidad) : null,
+        cantidad: Number(it.cantidad),
         observacion: it.requisicion_item?.observacion ?? null,
         producto_nombre: it.requisicion_item?.producto?.nombre ?? null,
         unidad_medida_nombre: it.requisicion_item?.unidad_medida?.nombre ?? null,
         unidad_medida_abreviatura: it.requisicion_item?.unidad_medida?.abreviatura ?? null,
+        requisicion_id: it.requisicion_item?.requisicion?.id ?? null,
+        requisicion_folio: it.requisicion_item?.requisicion?.folio ?? null,
       })) ?? [];
 
     return Compra.desdeFila({ ...row, proveedor_nombre: row.proveedor?.nombre ?? null, items });
@@ -65,34 +68,52 @@ export class CompraRepository extends BaseRepository<Compra, CompraQueryRow> {
     return (data as unknown as CompraQueryRow[]).map((r) => this.mapRow(r));
   }
 
-  /** Una requisición ahora puede tener varias compras (compra parcial por ítems). */
+  /**
+   * Una requisición puede aparecer en varias compras (compra parcial), y una
+   * compra puede tocar varias requisiciones (misma área/ciudad) -- por eso ya
+   * no existe `compras.requisicion_id` y esto se resuelve en dos pasos:
+   * primero los `compra_items` cuyo ítem de origen pertenece a esta
+   * requisición (PostgREST no filtra bien un `eq` a dos saltos de
+   * profundidad desde `compras`), luego las `compras` distintas referidas.
+   */
   async listarPorRequisicion(requisicionId: string): Promise<Compra[]> {
+    const { data: itemsData, error: itemsError } = await this.client
+      .from("compra_items")
+      .select("compra_id, requisicion_item:requisicion_items!inner(requisicion_id)")
+      .eq("requisicion_item.requisicion_id", requisicionId);
+    if (itemsError) throw new Error(`[compras] listarPorRequisicion (compra_items): ${itemsError.message}`);
+
+    const compraIds = Array.from(new Set((itemsData ?? []).map((r) => r.compra_id)));
+    if (compraIds.length === 0) return [];
+
     const { data, error } = await this.client
       .from(this.table)
       .select(this.select)
-      .eq("requisicion_id", requisicionId)
+      .in("id", compraIds)
       .order("created_at", { ascending: false });
     if (error) throw new Error(`[compras] listarPorRequisicion: ${error.message}`);
     return (data as unknown as CompraQueryRow[]).map((r) => this.mapRow(r));
   }
 
   /**
-   * Registra la compra (OC) a partir de ítems de una requisición aprobada,
-   * en una sola transacción atómica vía la RPC `registrar_compra_oc`, que
-   * valida pertenencia/disponibilidad de cada ítem y el presupuesto por rubro.
+   * Registra la compra (OC) a partir de ítems pendientes de una o varias
+   * requisiciones aprobadas (siempre que compartan área y ciudad de
+   * operación), en una sola transacción atómica vía la RPC
+   * `registrar_compra_oc`, que valida saldo pendiente/disponibilidad de cada
+   * ítem y el presupuesto por rubro. Cada ítem puede pedir menos de lo
+   * pendiente (compra parcial).
    */
   async registrarConItems(input: {
-    requisicionId: string;
     proveedorId: string;
-    items: { requisicionItemId: string; precioUnitario: number }[];
+    items: { requisicionItemId: string; cantidad: number; precioUnitario: number }[];
     fechaEntregaEstimada: string | null;
     notas: string | null;
   }): Promise<Compra> {
     const { data: id, error } = await this.client.rpc("registrar_compra_oc", {
-      p_requisicion_id: input.requisicionId,
       p_proveedor_id: input.proveedorId,
       p_items: input.items.map((i) => ({
         requisicion_item_id: i.requisicionItemId,
+        cantidad: i.cantidad,
         precio_unitario: i.precioUnitario,
       })),
       p_fecha_entrega_estimada: input.fechaEntregaEstimada,

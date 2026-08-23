@@ -203,6 +203,7 @@ export function UsuariosView({
         areas={areas}
         ciudadesOperacion={ciudadesOperacion}
         modulos={modulos}
+        posiblesSupervisores={usuarios}
         onGuardado={handleGuardado}
       />
       <ModalUsuario
@@ -212,6 +213,7 @@ export function UsuariosView({
         areas={areas}
         ciudadesOperacion={ciudadesOperacion}
         modulos={modulos}
+        posiblesSupervisores={usuarios.filter((u) => u.id !== editar?.id)}
         onGuardado={handleGuardado}
       />
       <ModalResetPassword usuario={resetear} onClose={() => setResetear(null)} />
@@ -294,6 +296,7 @@ function ModalUsuario({
   areas,
   ciudadesOperacion,
   modulos,
+  posiblesSupervisores,
   onGuardado,
 }: {
   open: boolean;
@@ -302,6 +305,7 @@ function ModalUsuario({
   areas: OpcionCatalogo[];
   ciudadesOperacion: OpcionCatalogo[];
   modulos: ModuloOpcion[];
+  posiblesSupervisores: UsuarioVM[];
   onGuardado: (usuario: UsuarioVM) => void;
 }) {
   const esEdicion = !!usuario;
@@ -310,6 +314,7 @@ function ModalUsuario({
   const [correo, setCorreo] = React.useState("");
   const [areaId, setAreaId] = React.useState("");
   const [ciudadOperacionId, setCiudadOperacionId] = React.useState("");
+  const [supervisorId, setSupervisorId] = React.useState("");
   const [roles, setRoles] = React.useState<RoleCode[]>([]);
   const [matriz, setMatriz] = React.useState<PermisoRow[]>(matrizVacia(modulos));
   const [passwordTemporal, setPasswordTemporal] = React.useState("");
@@ -327,6 +332,7 @@ function ModalUsuario({
       setCorreo(usuario.correo);
       setAreaId(usuario.areaId ?? "");
       setCiudadOperacionId(usuario.ciudadOperacionId ?? "");
+      setSupervisorId(usuario.supervisorId ?? "");
       setRoles(usuario.roles);
       setMatriz(modulos.map((m) => usuario.permisos.find((p) => p.modulo === m.code) ?? { modulo: m.code, crear: false, leer: false, actualizar: false, eliminar: false }));
       setActivo(usuario.activo);
@@ -335,6 +341,7 @@ function ModalUsuario({
       setCorreo("");
       setAreaId("");
       setCiudadOperacionId("");
+      setSupervisorId("");
       setRoles([]);
       setMatriz(matrizVacia(modulos));
       setPasswordTemporal(generarPasswordTemporal());
@@ -380,6 +387,7 @@ function ModalUsuario({
         nombre,
         areaId: areaId || null,
         ciudadOperacionId: ciudadOperacionId || null,
+        supervisorId: supervisorId || null,
         activo,
         roles,
         permisos: matriz,
@@ -393,6 +401,7 @@ function ModalUsuario({
         correo,
         areaId: areaId || null,
         ciudadOperacionId: ciudadOperacionId || null,
+        supervisorId: supervisorId || null,
         roles,
         permisos: matriz,
         passwordTemporal,
@@ -424,6 +433,8 @@ function ModalUsuario({
         areaNombre: areas.find((a) => a.id === areaId)?.nombre ?? null,
         ciudadOperacionId: ciudadOperacionId || null,
         ciudadOperacionNombre: ciudadesOperacion.find((c) => c.id === ciudadOperacionId)?.nombre ?? null,
+        supervisorId: supervisorId || null,
+        supervisorNombre: posiblesSupervisores.find((s) => s.id === supervisorId)?.nombre ?? null,
         roles,
         activo,
         fotoUrl: esEdicion ? usuario!.fotoUrl : null,
@@ -481,6 +492,18 @@ function ModalUsuario({
                 </option>
               ))}
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="us-supervisor">Supervisor (opcional)</Label>
+            <Select id="us-supervisor" value={supervisorId} onChange={(e) => setSupervisorId(e.target.value)}>
+              <option value="">Sin supervisor asignado</option>
+              {posiblesSupervisores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </Select>
+            <FieldHint>Quien aprueba las requisiciones de este usuario.</FieldHint>
           </div>
           {!esEdicion && (
             <div>

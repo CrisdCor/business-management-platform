@@ -6,16 +6,17 @@ export interface CompraItemRow {
   compra_id: string;
   requisicion_item_id: string;
   precio_unitario: number;
-  cantidad?: number | null;
+  cantidad: number;
   observacion?: string | null;
   producto_nombre?: string | null;
   unidad_medida_nombre?: string | null;
   unidad_medida_abreviatura?: string | null;
+  requisicion_id?: string | null;
+  requisicion_folio?: string | null;
 }
 
 export interface CompraRow {
   id: string;
-  requisicion_id: string;
   folio_oc: string;
   proveedor_id: string;
   proveedor_nombre?: string | null;
@@ -42,7 +43,6 @@ export interface CompraRow {
 export class Compra extends Entity<CompraRow> {
   private constructor(
     id: string,
-    public readonly requisicionId: string,
     public readonly folioOc: string,
     public readonly proveedorId: string,
     public readonly proveedorNombre: string | null,
@@ -64,7 +64,6 @@ export class Compra extends Entity<CompraRow> {
   static desdeFila(row: CompraRow): Compra {
     return new Compra(
       row.id,
-      row.requisicion_id,
       row.folio_oc,
       row.proveedor_id,
       row.proveedor_nombre ?? null,
@@ -97,10 +96,18 @@ export class Compra extends Entity<CompraRow> {
     return Math.ceil(ms / (1000 * 60 * 60 * 24));
   }
 
+  /** Folios de las requisiciones de origen tocadas por esta compra (puede cruzar varias, siempre que compartan área/ciudad). */
+  public get foliosRequisiciones(): string[] {
+    const folios = new Set<string>();
+    for (const it of this.items) {
+      if (it.requisicion_folio) folios.add(it.requisicion_folio);
+    }
+    return Array.from(folios);
+  }
+
   public toRow(): CompraRow {
     return {
       id: this.id,
-      requisicion_id: this.requisicionId,
       folio_oc: this.folioOc,
       proveedor_id: this.proveedorId,
       proveedor_nombre: this.proveedorNombre,

@@ -13,13 +13,14 @@ export interface SlideOverProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   /** Ancho del panel. "md" ronda el 40% de pantalla pedido, con mínimos/máximos legibles. */
-  width?: "sm" | "md" | "lg";
+  width?: "sm" | "md" | "lg" | "xl";
 }
 
 const ANCHOS: Record<NonNullable<SlideOverProps["width"]>, string> = {
   sm: "sm:w-[32vw] sm:min-w-[380px] sm:max-w-[480px]",
   md: "sm:w-[40vw] sm:min-w-[460px] sm:max-w-[640px]",
   lg: "sm:w-[48vw] sm:min-w-[560px] sm:max-w-[820px]",
+  xl: "sm:w-[60vw] sm:min-w-[680px] sm:max-w-[1040px]",
 };
 
 const DURACION_SALIDA_MS = 200;

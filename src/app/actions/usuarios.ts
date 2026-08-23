@@ -12,6 +12,7 @@ export async function crearUsuarioAction(input: {
   correo: string;
   areaId: string | null;
   ciudadOperacionId: string | null;
+  supervisorId: string | null;
   roles: RoleCode[];
   permisos: PermisoRow[];
   passwordTemporal: string;
@@ -32,6 +33,7 @@ export async function actualizarUsuarioAction(
     nombre?: string;
     areaId?: string | null;
     ciudadOperacionId?: string | null;
+    supervisorId?: string | null;
     activo?: boolean;
     roles?: RoleCode[];
     permisos?: PermisoRow[];
@@ -44,12 +46,14 @@ export async function actualizarUsuarioAction(
       input.nombre !== undefined ||
       input.areaId !== undefined ||
       input.ciudadOperacionId !== undefined ||
+      input.supervisorId !== undefined ||
       input.activo !== undefined
     ) {
       await servicio.actualizarPerfil(id, {
         nombre: input.nombre,
         areaId: input.areaId,
         ciudadOperacionId: input.ciudadOperacionId,
+        supervisorId: input.supervisorId,
         activo: input.activo,
       });
     }

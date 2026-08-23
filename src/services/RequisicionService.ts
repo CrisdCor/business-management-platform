@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { RequisicionRepository, type RequisicionFiltros } from "@/repositories/RequisicionRepository";
+import {
+  RequisicionRepository,
+  type RequisicionFiltros,
+  type ItemPendienteCompra,
+} from "@/repositories/RequisicionRepository";
 import { Requisicion } from "@/domain/entities/Requisicion";
 
 export class RequisicionService {
@@ -44,5 +48,33 @@ export class RequisicionService {
   /** Rechaza la requisición con motivo. La RPC exige que quien rechaza sea Superadministrador. */
   async rechazar(id: string, motivo: string): Promise<Requisicion> {
     return this.requisiciones.rechazar(id, motivo);
+  }
+
+  /** Edita descripción + ítems de una requisición. La RPC exige que quien edita sea el dueño o el Superadministrador, y que siga 'pendiente'. */
+  async editar(
+    id: string,
+    input: {
+      descripcion?: string | null;
+      items: { productoId: string; cantidad: number; observacion: string | null }[];
+    },
+  ): Promise<Requisicion> {
+    if (input.items.length === 0) {
+      throw new Error("La requisición debe tener al menos un ítem.");
+    }
+    return this.requisiciones.editarConItems(id, {
+      descripcion: input.descripcion ?? null,
+      items: input.items,
+    });
+  }
+
+  /** Anula todo el saldo pendiente restante de un ítem, con motivo obligatorio. */
+  async anularSaldoItem(requisicionItemId: string, motivo: string): Promise<void> {
+    if (!motivo.trim()) throw new Error("Debes indicar el motivo de la anulación.");
+    await this.requisiciones.anularSaldoItem(requisicionItemId, motivo);
+  }
+
+  /** Ítems con saldo pendiente de cualquier requisición aprobada/en_compra, para que Compras arme una OC. */
+  listarItemsPendientes(): Promise<ItemPendienteCompra[]> {
+    return this.requisiciones.listarItemsPendientesParaCompra();
   }
 }

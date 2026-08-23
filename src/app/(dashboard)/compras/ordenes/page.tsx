@@ -4,11 +4,11 @@ import { AuthService } from "@/services/AuthService";
 import { CompraService } from "@/services/CompraService";
 import { RequisicionService } from "@/services/RequisicionService";
 import { CatalogoService } from "@/services/CatalogoService";
-import { MODULOS, ESTADO_REQUISICION } from "@/domain/enums";
+import { MODULOS } from "@/domain/enums";
 import { OrdenesView } from "@/app/(dashboard)/compras/ordenes/OrdenesView";
 import type {
   CompraVM,
-  RequisicionDisponibleVM,
+  ItemPendienteCompraVM,
   ProveedorOpcionVM,
   PermisosOrdenesVM,
 } from "@/app/(dashboard)/compras/ordenes/types";
@@ -29,69 +29,54 @@ export default async function OrdenesPage() {
   const catalogoSvc = new CatalogoService(supabase);
 
   const puedeRegistrar = usuario.permisos.puedeCrear(MODULOS.COMPRAS_COMPRAS);
-  const puedeVerRequisiciones = usuario.permisos.puedeLeer(MODULOS.COMPRAS_REQUISICIONES);
 
-  const [compras, todasRequisiciones, proveedores] = await Promise.all([
+  const [compras, itemsPendientes, proveedores] = await Promise.all([
     compraSvc.listar(),
-    puedeVerRequisiciones ? requisicionSvc.listar() : Promise.resolve([]),
+    puedeRegistrar ? requisicionSvc.listarItemsPendientes() : Promise.resolve([]),
     puedeRegistrar ? catalogoSvc.listarProveedores() : Promise.resolve([]),
   ]);
 
-  const requisicionPorId = new Map(todasRequisiciones.map((r) => [r.id, r]));
+  const vm: CompraVM[] = compras.map((c) => ({
+    id: c.id,
+    folioOc: c.folioOc,
+    requisicionesFolios: c.foliosRequisiciones,
+    proveedorNombre: c.proveedorNombre ?? "—",
+    montoTotal: c.montoTotal,
+    excedePresupuesto: c.excedePresupuesto,
+    estado: c.estado,
+    fechaCompra: c.fechaCompra.toISOString(),
+    fechaEntregaEstimada: c.fechaEntregaEstimada?.toISOString() ?? null,
+    fechaCierre: c.fechaCierre?.toISOString() ?? null,
+    diasParaEntrega: c.diasParaEntrega,
+    items: c.items.map((it) => ({
+      id: it.id,
+      requisicionItemId: it.requisicion_item_id,
+      requisicionId: it.requisicion_id ?? "",
+      requisicionFolio: it.requisicion_folio ?? "—",
+      productoNombre: it.producto_nombre ?? "—",
+      unidadMedidaNombre: it.unidad_medida_nombre ?? "—",
+      unidadMedidaAbreviatura: it.unidad_medida_abreviatura ?? null,
+      cantidad: it.cantidad,
+      precioUnitario: it.precio_unitario,
+      observacion: it.observacion ?? null,
+    })),
+  }));
 
-  const vm: CompraVM[] = compras.map((c) => {
-    const requisicion = requisicionPorId.get(c.requisicionId);
-    return {
-      id: c.id,
-      folioOc: c.folioOc,
-      requisicionId: c.requisicionId,
-      requisicionFolio: requisicion?.folio ?? "—",
-      requisicionDescripcion: requisicion?.descripcion ?? "—",
-      proveedorNombre: c.proveedorNombre ?? "—",
-      montoTotal: c.montoTotal,
-      excedePresupuesto: c.excedePresupuesto,
-      estado: c.estado,
-      fechaCompra: c.fechaCompra.toISOString(),
-      fechaEntregaEstimada: c.fechaEntregaEstimada?.toISOString() ?? null,
-      fechaCierre: c.fechaCierre?.toISOString() ?? null,
-      diasParaEntrega: c.diasParaEntrega,
-      items: c.items.map((it) => ({
-        id: it.id,
-        requisicionItemId: it.requisicion_item_id,
-        productoNombre: it.producto_nombre ?? "—",
-        unidadMedidaNombre: it.unidad_medida_nombre ?? "—",
-        unidadMedidaAbreviatura: it.unidad_medida_abreviatura ?? null,
-        cantidad: it.cantidad ?? 0,
-        precioUnitario: it.precio_unitario,
-        observacion: it.observacion ?? null,
-      })),
-    };
-  });
-
-  const requisicionesVM: RequisicionDisponibleVM[] = todasRequisiciones
-    .filter(
-      (r) =>
-        (r.estado === ESTADO_REQUISICION.APROBADA || r.estado === ESTADO_REQUISICION.EN_COMPRA) &&
-        r.items.some((it) => !it.comprado),
-    )
-    .map((r) => ({
-      id: r.id,
-      folio: r.folio,
-      descripcion: r.descripcion,
-      areaNombre: r.areaNombre ?? "—",
-      ciudadOperacionNombre: r.ciudadOperacionNombre ?? "—",
-      itemsPendientes: r.items
-        .filter((it) => !it.comprado)
-        .map((it) => ({
-          id: it.id,
-          productoNombre: it.producto_nombre ?? "—",
-          rubroNombre: it.rubro_nombre ?? "—",
-          unidadMedidaNombre: it.unidad_medida_nombre ?? "—",
-          unidadMedidaAbreviatura: it.unidad_medida_abreviatura ?? null,
-          cantidad: it.cantidad,
-          observacion: it.observacion,
-        })),
-    }));
+  const itemsPendientesVM: ItemPendienteCompraVM[] = itemsPendientes.map((it) => ({
+    id: it.id,
+    requisicionId: it.requisicionId,
+    requisicionFolio: it.requisicionFolio,
+    areaId: it.areaId,
+    areaNombre: it.areaNombre ?? "—",
+    ciudadOperacionId: it.ciudadOperacionId,
+    ciudadOperacionNombre: it.ciudadOperacionNombre ?? "—",
+    productoNombre: it.productoNombre ?? "—",
+    rubroNombre: it.rubroNombre ?? "—",
+    unidadMedidaNombre: it.unidadMedidaNombre ?? "—",
+    unidadMedidaAbreviatura: it.unidadMedidaAbreviatura,
+    cantidadPendiente: it.cantidadPendiente,
+    observacion: it.observacion,
+  }));
 
   const proveedoresVM: ProveedorOpcionVM[] = proveedores
     .filter((p) => p.activo)
@@ -106,7 +91,7 @@ export default async function OrdenesPage() {
   return (
     <OrdenesView
       comprasIniciales={vm}
-      requisicionesDisponibles={requisicionesVM}
+      itemsPendientes={itemsPendientesVM}
       proveedores={proveedoresVM}
       permisos={permisos}
     />
