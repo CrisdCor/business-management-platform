@@ -24,6 +24,7 @@ export function PresupuestosView({
   presupuestosIniciales,
   areas,
   rubros,
+  ciudades,
   permisos,
   anio,
   mes,
@@ -31,6 +32,7 @@ export function PresupuestosView({
   presupuestosIniciales: PresupuestoVM[];
   areas: OpcionCatalogo[];
   rubros: OpcionCatalogo[];
+  ciudades: OpcionCatalogo[];
   permisos: PermisosPresupuestosVM;
   anio: number;
   mes: number;
@@ -43,14 +45,15 @@ export function PresupuestosView({
     (p) =>
       !busqueda ||
       p.rubroNombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.areaNombre.toLowerCase().includes(busqueda.toLowerCase()),
+      p.areaNombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.ciudadOperacionNombre.toLowerCase().includes(busqueda.toLowerCase()),
   );
 
   return (
     <div>
       <PageHeader
         title="Presupuestos"
-        description={`Asignación mensual por rubro y área — ${NOMBRES_MES[mes - 1]} ${anio}.`}
+        description={`Asignación mensual por rubro, área y ciudad de operación — ${NOMBRES_MES[mes - 1]} ${anio}.`}
         action={
           permisos.puedeAsignar && (
             <Button onClick={() => setModalAsignar(true)}>
@@ -60,14 +63,14 @@ export function PresupuestosView({
         }
       />
 
-      <FilterBar busqueda={busqueda} onBusquedaChange={setBusqueda} placeholder="Buscar por rubro o área..." />
+      <FilterBar busqueda={busqueda} onBusquedaChange={setBusqueda} placeholder="Buscar por rubro, área o ciudad..." />
 
       {filtrados.length === 0 ? (
         <Table>
           <TableBody>
             <tr>
-              <td colSpan={5}>
-                <EmptyState title="Sin presupuestos este mes" description="Asigna un presupuesto por rubro y área para habilitar requisiciones." />
+              <td colSpan={6}>
+                <EmptyState title="Sin presupuestos este mes" description="Asigna un presupuesto por rubro, área y ciudad de operación para habilitar requisiciones." />
               </td>
             </tr>
           </TableBody>
@@ -78,6 +81,7 @@ export function PresupuestosView({
             <tr>
               <TableHead>Rubro</TableHead>
               <TableHead>Área</TableHead>
+              <TableHead>Ciudad</TableHead>
               <TableHead>Asignado</TableHead>
               <TableHead>Consumo</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -88,6 +92,7 @@ export function PresupuestosView({
               <TableRow key={p.id}>
                 <TableCell>{p.rubroNombre}</TableCell>
                 <TableCell>{p.areaNombre}</TableCell>
+                <TableCell>{p.ciudadOperacionNombre}</TableCell>
                 <TableCell>{formatCurrency(p.montoAsignado)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -123,7 +128,7 @@ export function PresupuestosView({
         </Table>
       )}
 
-      <ModalAsignar open={modalAsignar} onClose={() => setModalAsignar(false)} areas={areas} rubros={rubros} anio={anio} mes={mes} />
+      <ModalAsignar open={modalAsignar} onClose={() => setModalAsignar(false)} areas={areas} rubros={rubros} ciudades={ciudades} anio={anio} mes={mes} />
       <ModalAjustar presupuesto={editar} onClose={() => setEditar(null)} />
     </div>
   );
@@ -134,6 +139,7 @@ function ModalAsignar({
   onClose,
   areas,
   rubros,
+  ciudades,
   anio,
   mes,
 }: {
@@ -141,11 +147,13 @@ function ModalAsignar({
   onClose: () => void;
   areas: OpcionCatalogo[];
   rubros: OpcionCatalogo[];
+  ciudades: OpcionCatalogo[];
   anio: number;
   mes: number;
 }) {
   const [areaId, setAreaId] = React.useState("");
   const [rubroId, setRubroId] = React.useState("");
+  const [ciudadOperacionId, setCiudadOperacionId] = React.useState("");
   const [monto, setMonto] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [cargando, setCargando] = React.useState(false);
@@ -155,11 +163,11 @@ function ModalAsignar({
     e.preventDefault();
     setError(null);
     const montoNumero = Number(monto);
-    if (!areaId || !rubroId) return setError("Selecciona área y rubro.");
+    if (!areaId || !rubroId || !ciudadOperacionId) return setError("Selecciona área, ciudad de operación y rubro.");
     if (!montoNumero || montoNumero <= 0) return setError("Ingresa un monto válido.");
 
     setCargando(true);
-    const resultado = await asignarPresupuestoAction({ areaId, rubroId, anio, mes, montoAsignado: montoNumero });
+    const resultado = await asignarPresupuestoAction({ areaId, rubroId, ciudadOperacionId, anio, mes, montoAsignado: montoNumero });
     setCargando(false);
 
     if (!resultado.ok) return setError(resultado.error ?? "No se pudo asignar el presupuesto.");
@@ -167,6 +175,7 @@ function ModalAsignar({
     notificar({ titulo: "Presupuesto asignado", tono: "success" });
     setAreaId("");
     setRubroId("");
+    setCiudadOperacionId("");
     setMonto("");
     onClose();
   }
@@ -191,6 +200,17 @@ function ModalAsignar({
             {areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.nombre}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="pres-ciudad">Ciudad de operación</Label>
+          <Select id="pres-ciudad" value={ciudadOperacionId} onChange={(e) => setCiudadOperacionId(e.target.value)}>
+            <option value="">Selecciona una ciudad</option>
+            {ciudades.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
               </option>
             ))}
           </Select>
@@ -251,7 +271,7 @@ function ModalAjustar({ presupuesto, onClose }: { presupuesto: PresupuestoVM | n
       open={!!presupuesto}
       onClose={onClose}
       title={`Ajustar presupuesto`}
-      description={presupuesto ? `${presupuesto.rubroNombre} · ${presupuesto.areaNombre}` : undefined}
+      description={presupuesto ? `${presupuesto.rubroNombre} · ${presupuesto.areaNombre} · ${presupuesto.ciudadOperacionNombre}` : undefined}
       width="sm"
       footer={
         <Button type="submit" form="form-ajuste" loading={cargando}>

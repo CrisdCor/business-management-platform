@@ -5,6 +5,7 @@ import { Presupuesto, type PresupuestoRow } from "@/domain/entities/Presupuesto"
 interface PresupuestoQueryRow extends PresupuestoRow {
   rubro?: { nombre: string } | null;
   area?: { nombre: string } | null;
+  ciudad_operacion?: { nombre: string } | null;
 }
 
 export class PresupuestoRepository extends BaseRepository<Presupuesto, PresupuestoQueryRow> {
@@ -13,7 +14,7 @@ export class PresupuestoRepository extends BaseRepository<Presupuesto, Presupues
   }
 
   protected override get select(): string {
-    return "*, rubro:rubros(nombre), area:areas(nombre)";
+    return "*, rubro:rubros(nombre), area:areas(nombre), ciudad_operacion:ciudades_operacion(nombre)";
   }
 
   protected mapRow(row: PresupuestoQueryRow): Presupuesto {
@@ -21,13 +22,15 @@ export class PresupuestoRepository extends BaseRepository<Presupuesto, Presupues
       ...row,
       rubro_nombre: row.rubro?.nombre ?? null,
       area_nombre: row.area?.nombre ?? null,
+      ciudad_operacion_nombre: row.ciudad_operacion?.nombre ?? null,
     });
   }
 
-  /** Presupuesto vigente para un rubro+área en un periodo dado (mes/año). */
+  /** Presupuesto vigente para un rubro+área+ciudad en un periodo dado (mes/año). */
   async buscarPorPeriodo(
     rubroId: string,
     areaId: string,
+    ciudadOperacionId: string,
     anio: number,
     mes: number,
   ): Promise<Presupuesto | null> {
@@ -36,6 +39,7 @@ export class PresupuestoRepository extends BaseRepository<Presupuesto, Presupues
       .select(this.select)
       .eq("rubro_id", rubroId)
       .eq("area_id", areaId)
+      .eq("ciudad_operacion_id", ciudadOperacionId)
       .eq("anio", anio)
       .eq("mes", mes)
       .maybeSingle();

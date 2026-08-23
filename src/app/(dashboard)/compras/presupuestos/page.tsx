@@ -19,10 +19,11 @@ export default async function PresupuestosPage() {
   }
 
   const ahora = new Date();
-  const [presupuestos, areas, rubros] = await Promise.all([
+  const [presupuestos, areas, rubros, ciudades] = await Promise.all([
     new PresupuestoService(supabase).listarPorPeriodo(ahora.getFullYear(), ahora.getMonth() + 1),
     new CatalogoService(supabase).listarAreas(),
     new CatalogoService(supabase).listarRubros(),
+    new CatalogoService(supabase).listarCiudadesOperacion(),
   ]);
 
   const vm: PresupuestoVM[] = presupuestos.map((p) => ({
@@ -31,6 +32,8 @@ export default async function PresupuestosPage() {
     rubroNombre: p.rubroNombre ?? "—",
     areaId: p.areaId,
     areaNombre: p.areaNombre ?? "—",
+    ciudadOperacionId: p.ciudadOperacionId,
+    ciudadOperacionNombre: p.ciudadOperacionNombre ?? "—",
     anio: p.anio,
     mes: p.mes,
     montoAsignado: p.montoAsignado,
@@ -50,6 +53,7 @@ export default async function PresupuestosPage() {
       presupuestosIniciales={vm}
       areas={areas.filter((a) => a.activo).map<OpcionCatalogo>((a) => ({ id: a.id, nombre: a.nombre }))}
       rubros={rubros.filter((r) => r.activo).map<OpcionCatalogo>((r) => ({ id: r.id, nombre: r.nombre }))}
+      ciudades={ciudades.filter((c) => c.activo).map<OpcionCatalogo>((c) => ({ id: c.id, nombre: c.nombre }))}
       permisos={permisos}
       anio={ahora.getFullYear()}
       mes={ahora.getMonth() + 1}

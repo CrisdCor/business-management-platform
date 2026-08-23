@@ -8,6 +8,7 @@ import type { AccionResultado } from "@/app/actions/auth";
 export async function asignarPresupuestoAction(input: {
   rubroId: string;
   areaId: string;
+  ciudadOperacionId: string;
   anio: number;
   mes: number;
   montoAsignado: number;

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { PresupuestoRepository } from "@/repositories/PresupuestoRepository";
 import type { Presupuesto } from "@/domain/entities/Presupuesto";
 
-/** Orquesta la asignación mensual de presupuesto por rubro + área (rol: Asistente Administrativa). */
+/** Orquesta la asignación mensual de presupuesto por rubro + área + ciudad de operación (rol: Asistente Administrativa). */
 export class PresupuestoService {
   private readonly presupuestos: PresupuestoRepository;
 
@@ -21,6 +21,7 @@ export class PresupuestoService {
   asignar(input: {
     rubroId: string;
     areaId: string;
+    ciudadOperacionId: string;
     anio: number;
     mes: number;
     montoAsignado: number;
@@ -28,6 +29,7 @@ export class PresupuestoService {
     return this.presupuestos.insert({
       rubro_id: input.rubroId,
       area_id: input.areaId,
+      ciudad_operacion_id: input.ciudadOperacionId,
       anio: input.anio,
       mes: input.mes,
       monto_asignado: input.montoAsignado,

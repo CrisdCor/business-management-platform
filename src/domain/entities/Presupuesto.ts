@@ -9,6 +9,8 @@ export interface PresupuestoRow {
   rubro_nombre?: string | null;
   area_id: string;
   area_nombre?: string | null;
+  ciudad_operacion_id: string;
+  ciudad_operacion_nombre?: string | null;
   anio: number;
   mes: number;
   monto_asignado: number;
@@ -29,6 +31,8 @@ export class Presupuesto extends Entity<PresupuestoRow> {
     public readonly rubroNombre: string | null,
     public readonly areaId: string,
     public readonly areaNombre: string | null,
+    public readonly ciudadOperacionId: string,
+    public readonly ciudadOperacionNombre: string | null,
     public readonly anio: number,
     public readonly mes: number,
     public readonly montoAsignado: number,
@@ -46,6 +50,8 @@ export class Presupuesto extends Entity<PresupuestoRow> {
       row.rubro_nombre ?? null,
       row.area_id,
       row.area_nombre ?? null,
+      row.ciudad_operacion_id,
+      row.ciudad_operacion_nombre ?? null,
       row.anio,
       row.mes,
       Number(row.monto_asignado),
@@ -83,6 +89,8 @@ export class Presupuesto extends Entity<PresupuestoRow> {
       rubro_nombre: this.rubroNombre,
       area_id: this.areaId,
       area_nombre: this.areaNombre,
+      ciudad_operacion_id: this.ciudadOperacionId,
+      ciudad_operacion_nombre: this.ciudadOperacionNombre,
       anio: this.anio,
       mes: this.mes,
       monto_asignado: this.montoAsignado,

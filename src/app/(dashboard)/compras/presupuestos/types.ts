@@ -4,6 +4,8 @@ export interface PresupuestoVM {
   rubroNombre: string;
   areaId: string;
   areaNombre: string;
+  ciudadOperacionId: string;
+  ciudadOperacionNombre: string;
   anio: number;
   mes: number;
   montoAsignado: number;
